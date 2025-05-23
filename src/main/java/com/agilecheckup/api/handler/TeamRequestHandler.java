@@ -44,6 +44,11 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleCreate(input.getBody());
       }
+      // PUT /teams/{id}
+      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
+        String id = extractIdFromPath(path);
+        return handleUpdate(id, input.getBody());
+      }
       // DELETE /teams/{id}
       else if (method.equals("DELETE") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path);
@@ -88,6 +93,24 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(team.get()));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create team");
+    }
+  }
+
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    Optional<Team> team = teamService.update(
+        id,
+        (String) requestMap.get("name"),
+        (String) requestMap.get("description"),
+        (String) requestMap.get("tenantId"),
+        (String) requestMap.get("departmentId")
+    );
+
+    if (team.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(team.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Team not found or update failed");
     }
   }
 

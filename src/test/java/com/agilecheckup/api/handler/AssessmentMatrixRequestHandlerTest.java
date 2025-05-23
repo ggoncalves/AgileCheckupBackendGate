@@ -91,7 +91,7 @@ class AssessmentMatrixRequestHandlerTest {
         anyString(), anyString(), anyString(), anyString(), any(Map.class)))
         .thenReturn(Optional.of(createdMatrix));
 
-    // Create an argumnet captor to verify the pillarMap is built correctly
+    // Create an argument captor to verify the pillarMap is built correctly
     ArgumentCaptor<Map<String, Pillar>> pillarMapCaptor = ArgumentCaptor.forClass(Map.class);
 
     // When - This will be using our new implementation with manual map building

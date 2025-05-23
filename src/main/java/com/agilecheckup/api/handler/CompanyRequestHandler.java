@@ -44,6 +44,11 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleCreate(input.getBody());
       }
+      // PUT /companies/{id}
+      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
+        String id = extractIdFromPath(path);
+        return handleUpdate(id, input.getBody());
+      }
       // DELETE /companies/{id}
       else if (method.equals("DELETE") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path);
@@ -89,6 +94,25 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(company.get()));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create company");
+    }
+  }
+
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    Optional<Company> company = companyService.update(
+        id,
+        (String) requestMap.get("documentNumber"),
+        (String) requestMap.get("name"),
+        (String) requestMap.get("email"),
+        (String) requestMap.get("description"),
+        (String) requestMap.get("tenantId")
+    );
+
+    if (company.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(company.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Company not found or update failed");
     }
   }
 

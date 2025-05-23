@@ -49,6 +49,11 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleCreate(input.getBody());
       }
+      // PUT /employeeassessments/{id}
+      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
+        String id = extractIdFromPath(path);
+        return handleUpdate(id, input.getBody());
+      }
       // POST /employeeassessments/{id}/score - Special endpoint to update assessment score
       else if (method.equals("POST") && UPDATE_SCORE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path.replace("/score", ""));
@@ -110,6 +115,36 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(employeeAssessment.get()));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
+    }
+  }
+
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    // Parse enums from strings
+    Gender gender = Gender.valueOf((String) requestMap.get("gender"));
+    GenderPronoun genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    PersonDocumentType documentType = null;
+    if (requestMap.get("documentType") != null) {
+      documentType = PersonDocumentType.valueOf((String) requestMap.get("documentType"));
+    }
+
+    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.update(
+        id,
+        (String) requestMap.get("assessmentMatrixId"),
+        (String) requestMap.get("teamId"),
+        (String) requestMap.get("name"),
+        (String) requestMap.get("email"),
+        (String) requestMap.get("documentNumber"),
+        documentType,
+        gender,
+        genderPronoun
+    );
+
+    if (employeeAssessment.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
     }
   }
 

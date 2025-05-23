@@ -44,6 +44,11 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleCreate(input.getBody());
       }
+      // PUT /performancecycles/{id}
+      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
+        String id = extractIdFromPath(path);
+        return handleUpdate(id, input.getBody());
+      }
       // DELETE /performancecycles/{id}
       else if (method.equals("DELETE") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path);
@@ -90,6 +95,26 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(performanceCycle.get()));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create performance cycle");
+    }
+  }
+
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    Optional<PerformanceCycle> performanceCycle = performanceCycleService.update(
+        id,
+        (String) requestMap.get("name"),
+        (String) requestMap.get("description"),
+        (String) requestMap.get("tenantId"),
+        (String) requestMap.get("companyId"),
+        (Boolean) requestMap.get("isActive"),
+        (Boolean) requestMap.get("isTimeSensitive")
+    );
+
+    if (performanceCycle.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycle.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Performance cycle not found or update failed");
     }
   }
 

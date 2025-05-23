@@ -52,6 +52,11 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleCreate(input.getBody());
       }
+      // PUT /answers/{id}
+      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
+        String id = extractIdFromPath(path);
+        return handleUpdate(id, input.getBody());
+      }
       // DELETE /answers/{id}
       else if (method.equals("DELETE") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path);
@@ -112,6 +117,26 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(answer.get()));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create answer");
+    }
+  }
+
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    // Parse the LocalDateTime
+    LocalDateTime answeredAt = LocalDateTime.parse((String) requestMap.get("answeredAt"));
+
+    Optional<Answer> answer = answerService.update(
+        id,
+        answeredAt,
+        (String) requestMap.get("value"),
+        (String) requestMap.get("notes")
+    );
+
+    if (answer.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(answer.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Answer not found or update failed");
     }
   }
 

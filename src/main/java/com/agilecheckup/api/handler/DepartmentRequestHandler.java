@@ -34,7 +34,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
       // GET /departments
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /departments/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -66,8 +66,15 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(departmentService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    
+    if (queryParams != null && queryParams.containsKey("tenantId")) {
+      String tenantId = queryParams.get("tenantId");
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(departmentService.findAllByTenantId(tenantId)));
+    } else {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(departmentService.findAll()));
+    }
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {

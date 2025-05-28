@@ -33,7 +33,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
 
       // GET /teams
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /teams/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -65,8 +65,25 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(teamService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    
+    if (queryParams != null && queryParams.containsKey("tenantId")) {
+      String tenantId = queryParams.get("tenantId");
+      String departmentId = queryParams.get("departmentId");
+      
+      // If departmentId is provided, filter by both tenant and department
+      if (departmentId != null) {
+        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(teamService.findByDepartmentId(departmentId, tenantId)));
+      }
+      // If only tenantId is provided, return all teams for that tenant
+      else {
+        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(teamService.findAllByTenantId(tenantId)));
+      }
+    }
+    
+    // No tenantId provided - return error for security
+    return ResponseBuilder.buildResponse(400, "tenantId is required");
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {

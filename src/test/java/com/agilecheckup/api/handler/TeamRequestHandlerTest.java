@@ -3,6 +3,7 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.Department;
 import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.service.DepartmentService;
 import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -31,6 +32,9 @@ class TeamRequestHandlerTest {
   private TeamService teamService;
 
   @Mock
+  private DepartmentService departmentService;
+
+  @Mock
   private Context context;
 
   @Mock
@@ -42,6 +46,7 @@ class TeamRequestHandlerTest {
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
     lenient().doReturn(teamService).when(serviceComponent).buildTeamService();
+    lenient().doReturn(departmentService).when(serviceComponent).buildDepartmentService();
     lenient().doReturn(lambdaLogger).when(context).getLogger();
     handler = new TeamRequestHandler(serviceComponent, objectMapper);
   }
@@ -64,6 +69,7 @@ class TeamRequestHandlerTest {
     List<Team> teams = Arrays.asList(team1, team2);
 
     when(teamService.findAllByTenantId(tenantId)).thenReturn(teams);
+    when(departmentService.findById(department.getId())).thenReturn(Optional.of(department));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -71,6 +77,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains("team-1", "Team Alpha", "team-2", "Team Beta");
+    assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
     verify(teamService).findAllByTenantId(tenantId);
     verify(teamService, never()).findAll();
   }
@@ -94,6 +101,7 @@ class TeamRequestHandlerTest {
     List<Team> filteredTeams = Collections.singletonList(team1);
 
     when(teamService.findByDepartmentId(departmentId, tenantId)).thenReturn(filteredTeams);
+    when(departmentService.findById(department.getId())).thenReturn(Optional.of(department));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -101,6 +109,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains("team-1", "Team Alpha");
+    assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
     verify(teamService).findByDepartmentId(departmentId, tenantId);
     verify(teamService, never()).findAllByTenantId(tenantId);
     verify(teamService, never()).findAll();
@@ -136,6 +145,7 @@ class TeamRequestHandlerTest {
     Team team = createTeam(teamId, "Team Alpha", department, "tenant-123");
 
     when(teamService.findById(teamId)).thenReturn(Optional.of(team));
+    when(departmentService.findById(department.getId())).thenReturn(Optional.of(department));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -143,6 +153,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains(teamId, "Team Alpha");
+    assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
     verify(teamService).findById(teamId);
   }
 
@@ -186,6 +197,7 @@ class TeamRequestHandlerTest {
 
     when(teamService.create("New Team", "A new development team", "tenant-123", "dept-1"))
         .thenReturn(Optional.of(createdTeam));
+    when(departmentService.findById(department.getId())).thenReturn(Optional.of(department));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -193,6 +205,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(201);
     assertThat(response.getBody()).contains("new-team-id", "New Team");
+    assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
     verify(teamService).create("New Team", "A new development team", "tenant-123", "dept-1");
   }
 
@@ -244,6 +257,7 @@ class TeamRequestHandlerTest {
 
     when(teamService.update(teamId, "Updated Team", "Updated description", "tenant-123", "dept-2"))
         .thenReturn(Optional.of(updatedTeam));
+    when(departmentService.findById(department.getId())).thenReturn(Optional.of(department));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -251,6 +265,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains(teamId, "Updated Team");
+    assertThat(response.getBody()).contains("Operations"); // Department name should be in response
     verify(teamService).update(teamId, "Updated Team", "Updated description", "tenant-123", "dept-2");
   }
 
@@ -413,7 +428,7 @@ class TeamRequestHandlerTest {
     Team team = new Team();
     team.setId(id);
     team.setName(name);
-    team.setDepartment(department);
+    team.setDepartmentId(department.getId());
     team.setTenantId(tenantId);
     team.setDescription(name + " Description");
     return team;

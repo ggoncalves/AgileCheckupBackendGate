@@ -1,16 +1,21 @@
 package com.agilecheckup.api.handler;
 
+import com.agilecheckup.api.model.TeamResponse;
 import com.agilecheckup.dagger.component.ServiceComponent;
+import com.agilecheckup.persistency.entity.Department;
 import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.service.DepartmentService;
 import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class TeamRequestHandler implements RequestHandlerStrategy {
 
@@ -18,10 +23,12 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/teams/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/teams/([^/]+)/?$");
   private final TeamService teamService;
+  private final DepartmentService departmentService;
   private final ObjectMapper objectMapper;
 
   public TeamRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     this.teamService = serviceComponent.buildTeamService();
+    this.departmentService = serviceComponent.buildDepartmentService();
     this.objectMapper = objectMapper;
   }
 
@@ -74,11 +81,15 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       
       // If departmentId is provided, filter by both tenant and department
       if (departmentId != null) {
-        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(teamService.findByDepartmentId(departmentId, tenantId)));
+        List<Team> teams = teamService.findByDepartmentId(departmentId, tenantId);
+        List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
+        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
       // If only tenantId is provided, return all teams for that tenant
       else {
-        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(teamService.findAllByTenantId(tenantId)));
+        List<Team> teams = teamService.findAllByTenantId(tenantId);
+        List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
+        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
     }
     
@@ -90,7 +101,8 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     Optional<Team> team = teamService.findById(id);
 
     if (team.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(team.get()));
+      TeamResponse response = enrichTeamWithDepartment(team.get());
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
     } else {
       return ResponseBuilder.buildResponse(404, "Team not found");
     }
@@ -107,7 +119,8 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     );
 
     if (team.isPresent()) {
-      return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(team.get()));
+      TeamResponse response = enrichTeamWithDepartment(team.get());
+      return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(response));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create team");
     }
@@ -125,7 +138,8 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     );
 
     if (team.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(team.get()));
+      TeamResponse response = enrichTeamWithDepartment(team.get());
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
     } else {
       return ResponseBuilder.buildResponse(404, "Team not found or update failed");
     }
@@ -145,5 +159,16 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private String extractIdFromPath(String path) {
     // Extract ID from path like /teams/{id}
     return path.substring(path.lastIndexOf("/") + 1);
+  }
+  
+  private TeamResponse enrichTeamWithDepartment(Team team) {
+    Optional<Department> department = departmentService.findById(team.getDepartmentId());
+    return TeamResponse.fromTeam(team, department.orElse(null));
+  }
+  
+  private List<TeamResponse> enrichTeamsWithDepartments(List<Team> teams) {
+    return teams.stream()
+        .map(this::enrichTeamWithDepartment)
+        .collect(Collectors.toList());
   }
 }

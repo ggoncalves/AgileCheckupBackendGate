@@ -13,14 +13,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -36,12 +39,15 @@ class AssessmentMatrixRequestHandlerTest {
   @Mock
   private Context context;
 
-  private ObjectMapper objectMapper;
+  @Captor
+  ArgumentCaptor<Map<String, Pillar>> pillarMapCaptor;
+
+
   private AssessmentMatrixRequestHandler handler;
 
   @BeforeEach
   void setUp() {
-    objectMapper = new ObjectMapper();
+    ObjectMapper objectMapper = new ObjectMapper();
     when(serviceComponent.buildAssessmentMatrixService()).thenReturn(assessmentMatrixService);
     handler = new AssessmentMatrixRequestHandler(serviceComponent, objectMapper);
   }
@@ -88,11 +94,8 @@ class AssessmentMatrixRequestHandlerTest {
 
     // Set up the service to return the assessment matrix, capture arguments
     when(assessmentMatrixService.create(
-        anyString(), anyString(), anyString(), anyString(), any(Map.class)))
+        anyString(), anyString(), anyString(), anyString(), anyMap()))
         .thenReturn(Optional.of(createdMatrix));
-
-    // Create an argument captor to verify the pillarMap is built correctly
-    ArgumentCaptor<Map<String, Pillar>> pillarMapCaptor = ArgumentCaptor.forClass(Map.class);
 
     // When - This will be using our new implementation with manual map building
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -121,5 +124,65 @@ class AssessmentMatrixRequestHandlerTest {
     // Verify the response
     assertThat(response.getStatusCode()).isEqualTo(201);
     assertThat(response.getBody()).contains("new-matrix-id");
+  }
+
+  @Test
+  void handleGetAll_whenTenantIdProvided_shouldReturnMatricesForTenant() {
+    // Given
+    String tenantId = "tenant-123";
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("tenantId", tenantId);
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(queryParams);
+
+    AssessmentMatrix matrix1 = AssessmentMatrix.builder()
+        .id("matrix-1")
+        .name("Engineering Matrix")
+        .description("For engineering assessments")
+        .tenantId(tenantId)
+        .performanceCycleId("cycle-1")
+        .build();
+
+    AssessmentMatrix matrix2 = AssessmentMatrix.builder()
+        .id("matrix-2")
+        .name("Sales Matrix")
+        .description("For sales assessments")
+        .tenantId(tenantId)
+        .performanceCycleId("cycle-2")
+        .build();
+
+    List<AssessmentMatrix> matrices = Arrays.asList(matrix1, matrix2);
+
+    when(assessmentMatrixService.findAllByTenantId(tenantId)).thenReturn(matrices);
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.getBody()).contains("matrix-1", "Engineering Matrix");
+    assertThat(response.getBody()).contains("matrix-2", "Sales Matrix");
+    verify(assessmentMatrixService).findAllByTenantId(tenantId);
+    verify(assessmentMatrixService, never()).findAll();
+  }
+
+  @Test
+  void handleGetAll_whenNoTenantIdProvided_shouldReturnBadRequest() {
+    // Given
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("GET");
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(400);
+    assertThat(response.getBody()).isEqualTo("tenantId is required");
+    verify(assessmentMatrixService, never()).findAll();
+    verify(assessmentMatrixService, never()).findAllByTenantId(anyString());
   }
 }

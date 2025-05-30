@@ -38,7 +38,7 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
 
       // GET /assessmentmatrices
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /assessmentmatrices/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -70,14 +70,21 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
       context.getLogger().log("Error in assessment matrix endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error processing assessment matrix request: " + e.getMessage());
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrixService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+
+    if (queryParams != null && queryParams.containsKey("tenantId")) {
+      String tenantId = queryParams.get("tenantId");
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrixService.findAllByTenantId(tenantId)));
+    }
+
+    // No tenantId provided - return error for security
+    return ResponseBuilder.buildResponse(400, "tenantId is required");
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
@@ -90,7 +97,7 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleCreate(String requestBody, Context context) throws Exception {
+  private APIGatewayProxyResponseEvent handleCreate(String requestBody, Context context) {
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
@@ -112,13 +119,12 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(400, "Failed to create assessment matrix");
       }
     } catch (Exception e) {
-      e.printStackTrace();
       context.getLogger().log("Detailed error: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error creating assessment matrix: " + e.getMessage());
     }
   }
 
-  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody, Context context) throws Exception {
+  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody, Context context) {
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
@@ -140,7 +146,6 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(404, "Assessment matrix not found or update failed");
       }
     } catch (Exception e) {
-      e.printStackTrace();
       context.getLogger().log("Detailed error: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error updating assessment matrix: " + e.getMessage());
     }

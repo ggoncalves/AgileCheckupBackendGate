@@ -3,15 +3,15 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycle;
 import com.agilecheckup.service.PerformanceCycleService;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -20,9 +20,10 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class PerformanceCycleRequestHandlerTest {
 
     @Mock
@@ -34,32 +35,29 @@ class PerformanceCycleRequestHandlerTest {
     @Mock
     private Context mockContext;
 
-    @Mock
-    private PaginatedScanList<PerformanceCycle> mockPaginatedScanList;
-
     private PerformanceCycleRequestHandler handler;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
         when(mockServiceComponent.buildPerformanceCycleService()).thenReturn(mockPerformanceCycleService);
         handler = new PerformanceCycleRequestHandler(mockServiceComponent, objectMapper);
     }
 
     @Test
-    void testGetAllPerformanceCycles() {
+    void testGetAllPerformanceCyclesWithTenantId() {
         // Prepare
+        String tenantId = "tenant1";
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/performancecycles")
-                .withHttpMethod("GET");
+            .withHttpMethod("GET")
+            .withQueryStringParameters(java.util.Collections.singletonMap("tenantId", tenantId));
 
         PerformanceCycle cycle1 = PerformanceCycle.builder()
                 .id("1")
                 .name("Q1 2024")
                 .description("First quarter")
-                .tenantId("tenant1")
+            .tenantId(tenantId)
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(false)
@@ -69,7 +67,7 @@ class PerformanceCycleRequestHandlerTest {
                 .id("2")
                 .name("Q2 2024")
                 .description("Second quarter")
-                .tenantId("tenant1")
+            .tenantId(tenantId)
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(true)
@@ -78,16 +76,29 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         List<PerformanceCycle> cyclesList = Arrays.asList(cycle1, cycle2);
-        when(mockPaginatedScanList.iterator()).thenReturn(cyclesList.iterator());
-        when(mockPaginatedScanList.size()).thenReturn(cyclesList.size());
-        when(mockPerformanceCycleService.findAll()).thenReturn(mockPaginatedScanList);
+        when(mockPerformanceCycleService.findAllByTenantId(tenantId)).thenReturn(cyclesList);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
 
         // Verify
         assertEquals(200, response.getStatusCode());
-        verify(mockPerformanceCycleService).findAll();
+        verify(mockPerformanceCycleService).findAllByTenantId(tenantId);
+    }
+
+    @Test
+    void testGetAllPerformanceCyclesWithoutTenantId() {
+        // Prepare
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+            .withPath("/performancecycles")
+            .withHttpMethod("GET");
+
+        // Execute
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
+
+        // Verify
+        assertEquals(400, response.getStatusCode());
+        assertEquals("tenantId is required", response.getBody());
     }
 
     @Test
@@ -137,7 +148,7 @@ class PerformanceCycleRequestHandlerTest {
     }
 
     @Test
-    void testCreatePerformanceCycleWithDates() throws Exception {
+    void testCreatePerformanceCycleWithDates() {
         // Prepare
         String requestBody = "{"
                 + "\"name\":\"Q3 2024\","
@@ -196,7 +207,7 @@ class PerformanceCycleRequestHandlerTest {
     }
 
     @Test
-    void testCreatePerformanceCycleWithoutDates() throws Exception {
+    void testCreatePerformanceCycleWithoutDates() {
         // Prepare
         String requestBody = "{"
                 + "\"name\":\"Ongoing Review\","
@@ -251,7 +262,7 @@ class PerformanceCycleRequestHandlerTest {
     }
 
     @Test
-    void testUpdatePerformanceCycle() throws Exception {
+    void testUpdatePerformanceCycle() {
         // Prepare
         String cycleId = "123";
         String requestBody = "{"
@@ -313,7 +324,7 @@ class PerformanceCycleRequestHandlerTest {
     }
 
     @Test
-    void testUpdatePerformanceCycleNotFound() throws Exception {
+    void testUpdatePerformanceCycleNotFound() {
         // Prepare
         String cycleId = "nonexistent";
         String requestBody = "{"

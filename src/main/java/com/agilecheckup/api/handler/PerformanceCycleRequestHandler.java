@@ -35,7 +35,7 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
 
       // GET /performancecycles
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /performancecycles/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -67,8 +67,16 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycleService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    
+    if (queryParams != null && queryParams.containsKey("tenantId")) {
+      String tenantId = queryParams.get("tenantId");
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycleService.findAllByTenantId(tenantId)));
+    }
+    
+    // No tenantId provided - return error for security
+    return ResponseBuilder.buildResponse(400, "tenantId is required");
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {

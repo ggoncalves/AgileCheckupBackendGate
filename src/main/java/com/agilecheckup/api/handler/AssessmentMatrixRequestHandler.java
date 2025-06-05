@@ -15,67 +15,36 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
+public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrix> {
 
-  // Regex patterns for path matching
-  private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/assessmentmatrices/?$");
-  private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/?$");
   private static final Pattern UPDATE_POTENTIAL_SCORE_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/potentialscore/?$");
 
   private final AssessmentMatrixService assessmentMatrixService;
-  private final ObjectMapper objectMapper;
 
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
+    super(objectMapper, "assessmentmatrices");
     this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
-    this.objectMapper = objectMapper;
+  }
+  
+  @Override
+  protected String getResourceName() {
+    return "assessment matrix";
+  }
+  
+  @Override
+  protected Optional<APIGatewayProxyResponseEvent> handleCustomEndpoint(String method, String path, 
+                                                                       APIGatewayProxyRequestEvent input, 
+                                                                       Context context) throws Exception {
+    // Handle special endpoint: POST /assessmentmatrices/{id}/potentialscore
+    if (method.equals("POST") && UPDATE_POTENTIAL_SCORE_PATTERN.matcher(path).matches()) {
+      String id = extractIdFromPath(path.replace("/potentialscore", ""));
+      return Optional.of(handleUpdatePotentialScore(id, input.getBody()));
+    }
+    return Optional.empty();
   }
 
   @Override
-  public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
-    try {
-      String path = input.getPath();
-      String method = input.getHttpMethod();
-
-      // GET /assessmentmatrices
-      if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll(input);
-      }
-      // GET /assessmentmatrices/{id}
-      else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
-        String id = extractIdFromPath(path);
-        return handleGetById(id);
-      }
-      // POST /assessmentmatrices
-      else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleCreate(input.getBody(), context);
-      }
-      // PUT /assessmentmatrices/{id}
-      else if (method.equals("PUT") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
-        String id = extractIdFromPath(path);
-        return handleUpdate(id, input.getBody(), context);
-      }
-      // POST /assessmentmatrices/{id}/potentialscore - Special endpoint to update potential score
-      else if (method.equals("POST") && UPDATE_POTENTIAL_SCORE_PATTERN.matcher(path).matches()) {
-        String id = extractIdFromPath(path.replace("/potentialscore", ""));
-        return handleUpdatePotentialScore(id, input.getBody());
-      }
-      // DELETE /assessmentmatrices/{id}
-      else if (method.equals("DELETE") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
-        String id = extractIdFromPath(path);
-        return handleDelete(id);
-      }
-      // Method not supported
-      else {
-        return ResponseBuilder.buildResponse(405, "Method Not Allowed");
-      }
-
-    } catch (Exception e) {
-      context.getLogger().log("Error in assessment matrix endpoint: " + e.getMessage());
-      return ResponseBuilder.buildResponse(500, "Error processing assessment matrix request: " + e.getMessage());
-    }
-  }
-
-  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+  protected APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
     Map<String, String> queryParams = input.getQueryStringParameters();
 
     if (queryParams != null && queryParams.containsKey("tenantId")) {
@@ -87,7 +56,8 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     return ResponseBuilder.buildResponse(400, "tenantId is required");
   }
 
-  private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
+  @Override
+  protected APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
     Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.findById(id);
 
     if (assessmentMatrix.isPresent()) {
@@ -97,7 +67,8 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleCreate(String requestBody, Context context) {
+  @Override
+  protected APIGatewayProxyResponseEvent handleCreate(String requestBody, Context context) throws Exception {
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
@@ -124,7 +95,8 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody, Context context) {
+  @Override
+  protected APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody, Context context) throws Exception {
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
@@ -204,7 +176,8 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleDelete(String id) {
+  @Override
+  protected APIGatewayProxyResponseEvent handleDelete(String id) throws Exception {
     Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.findById(id);
 
     if (assessmentMatrix.isPresent()) {
@@ -215,8 +188,4 @@ public class AssessmentMatrixRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private String extractIdFromPath(String path) {
-    // Extract ID from path like /assessmentmatrices/{id}
-    return path.substring(path.lastIndexOf("/") + 1);
-  }
 }

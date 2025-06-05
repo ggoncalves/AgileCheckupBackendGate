@@ -15,6 +15,10 @@ import java.util.Map;
 
 public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
+  static {
+    System.setProperty("aws.java.v1.disableDeprecationAnnouncement", "true");
+  }
+
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private final Map<String, RequestHandlerStrategy> routeHandlers;
 

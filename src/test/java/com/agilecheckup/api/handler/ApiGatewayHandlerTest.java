@@ -9,7 +9,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 
 class ApiGatewayHandlerTest {
 
@@ -24,7 +24,7 @@ class ApiGatewayHandlerTest {
     handler = new ApiGatewayHandler();
 
     // Set up context mock
-    when(context.getLogger()).thenReturn(new TestLogger());
+    doReturn(new TestLogger()).when(context).getLogger();
   }
 
   @Test

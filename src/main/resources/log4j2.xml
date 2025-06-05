@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="JsonAppender" target="SYSTEM_OUT">
+            <JsonTemplateLayout eventTemplateUri="classpath:EcsLayout.json"/>
+        </Console>
+        <!-- Fallback console appender with correct pattern -->
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss} [%t] %-5level %c{36} - %m%n"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <!-- Suppress AWS SDK v1 deprecation warnings -->
+        <Logger name="com.amazonaws.util.VersionInfoUtils" level="ERROR"/>
+
+        <!-- Your application logs -->
+        <Logger name="com.agilecheckup" level="INFO"/>
+
+        <Root level="INFO">
+            <AppenderRef ref="ConsoleAppender"/>
+        </Root>
+    </Loggers>
+</Configuration>

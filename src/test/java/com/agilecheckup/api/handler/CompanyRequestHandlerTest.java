@@ -23,7 +23,14 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CompanyRequestHandlerTest {
@@ -158,11 +165,10 @@ class CompanyRequestHandlerTest {
     ArgumentCaptor<NaturalPerson> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPerson.class);
     ArgumentCaptor<Address> addressCaptor = ArgumentCaptor.forClass(Address.class);
 
-    when(companyService.create(
+    doReturn(Optional.of(createdCompany)).when(companyService).create(
         anyString(), anyString(), anyString(), anyString(), anyString(),
         any(CompanySize.class), any(Industry.class), anyString(), anyString(),
-        any(NaturalPerson.class), any(Address.class)))
-        .thenReturn(Optional.of(createdCompany));
+        any(NaturalPerson.class), any(Address.class));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -427,11 +433,10 @@ class CompanyRequestHandlerTest {
         .legalName("Updated Company Legal")
         .build();
 
-    when(companyService.update(
+    doReturn(Optional.of(updatedCompany)).when(companyService).update(
         anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
         any(CompanySize.class), any(Industry.class), anyString(), anyString(),
-        any(), any()))
-        .thenReturn(Optional.of(updatedCompany));
+        any(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);

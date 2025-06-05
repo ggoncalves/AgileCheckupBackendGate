@@ -25,7 +25,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentMatrixRequestHandlerTest {
@@ -48,7 +53,7 @@ class AssessmentMatrixRequestHandlerTest {
   @BeforeEach
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
-    when(serviceComponent.buildAssessmentMatrixService()).thenReturn(assessmentMatrixService);
+    doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
     handler = new AssessmentMatrixRequestHandler(serviceComponent, objectMapper);
   }
 
@@ -93,9 +98,8 @@ class AssessmentMatrixRequestHandlerTest {
         .build();
 
     // Set up the service to return the assessment matrix, capture arguments
-    when(assessmentMatrixService.create(
-        anyString(), anyString(), anyString(), anyString(), anyMap()))
-        .thenReturn(Optional.of(createdMatrix));
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap());
 
     // When - This will be using our new implementation with manual map building
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -156,7 +160,7 @@ class AssessmentMatrixRequestHandlerTest {
 
     List<AssessmentMatrix> matrices = Arrays.asList(matrix1, matrix2);
 
-    when(assessmentMatrixService.findAllByTenantId(tenantId)).thenReturn(matrices);
+    doReturn(matrices).when(assessmentMatrixService).findAllByTenantId(tenantId);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);

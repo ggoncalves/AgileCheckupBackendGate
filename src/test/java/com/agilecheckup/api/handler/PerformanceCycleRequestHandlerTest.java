@@ -19,9 +19,13 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PerformanceCycleRequestHandlerTest {
@@ -40,7 +44,7 @@ class PerformanceCycleRequestHandlerTest {
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper();
-        when(mockServiceComponent.buildPerformanceCycleService()).thenReturn(mockPerformanceCycleService);
+        doReturn(mockPerformanceCycleService).when(mockServiceComponent).buildPerformanceCycleService();
         handler = new PerformanceCycleRequestHandler(mockServiceComponent, objectMapper);
     }
 
@@ -76,7 +80,7 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         List<PerformanceCycle> cyclesList = Arrays.asList(cycle1, cycle2);
-        when(mockPerformanceCycleService.findAllByTenantId(tenantId)).thenReturn(cyclesList);
+        doReturn(cyclesList).when(mockPerformanceCycleService).findAllByTenantId(tenantId);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -119,7 +123,7 @@ class PerformanceCycleRequestHandlerTest {
                 .isTimeSensitive(false)
                 .build();
 
-        when(mockPerformanceCycleService.findById(cycleId)).thenReturn(Optional.of(cycle));
+        doReturn(Optional.of(cycle)).when(mockPerformanceCycleService).findById(cycleId);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -137,7 +141,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("GET");
 
-        when(mockPerformanceCycleService.findById(cycleId)).thenReturn(Optional.empty());
+        doReturn(Optional.empty()).when(mockPerformanceCycleService).findById(cycleId);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -178,7 +182,7 @@ class PerformanceCycleRequestHandlerTest {
                 .endDate(new Date())
                 .build();
 
-        when(mockPerformanceCycleService.create(
+        doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
                 eq("Q3 2024"),
                 eq("Third quarter review"),
                 eq("tenant1"),
@@ -187,7 +191,7 @@ class PerformanceCycleRequestHandlerTest {
                 eq(false),
                 any(Date.class),
                 any(Date.class)
-        )).thenReturn(Optional.of(createdCycle));
+        );
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -233,7 +237,7 @@ class PerformanceCycleRequestHandlerTest {
                 .isTimeSensitive(false) // Should be false because no endDate
                 .build();
 
-        when(mockPerformanceCycleService.create(
+        doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
                 eq("Ongoing Review"),
                 eq("Continuous performance review"),
                 eq("tenant1"),
@@ -242,7 +246,7 @@ class PerformanceCycleRequestHandlerTest {
                 eq(true),
                 isNull(),
                 isNull()
-        )).thenReturn(Optional.of(createdCycle));
+        );
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -293,7 +297,7 @@ class PerformanceCycleRequestHandlerTest {
                 .endDate(new Date())
                 .build();
 
-        when(mockPerformanceCycleService.update(
+        doReturn(Optional.of(updatedCycle)).when(mockPerformanceCycleService).update(
                 eq(cycleId),
                 eq("Updated Q1 2024"),
                 eq("Updated first quarter"),
@@ -303,7 +307,7 @@ class PerformanceCycleRequestHandlerTest {
                 eq(true),
                 any(Date.class),
                 any(Date.class)
-        )).thenReturn(Optional.of(updatedCycle));
+        );
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -341,7 +345,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        when(mockPerformanceCycleService.update(
+        doReturn(Optional.empty()).when(mockPerformanceCycleService).update(
                 eq(cycleId),
                 anyString(),
                 anyString(),
@@ -351,7 +355,7 @@ class PerformanceCycleRequestHandlerTest {
                 anyBoolean(),
                 any(),
                 any()
-        )).thenReturn(Optional.empty());
+        );
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -379,7 +383,7 @@ class PerformanceCycleRequestHandlerTest {
                 .isTimeSensitive(false)
                 .build();
 
-        when(mockPerformanceCycleService.findById(cycleId)).thenReturn(Optional.of(cycle));
+        doReturn(Optional.of(cycle)).when(mockPerformanceCycleService).findById(cycleId);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
@@ -398,7 +402,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("DELETE");
 
-        when(mockPerformanceCycleService.findById(cycleId)).thenReturn(Optional.empty());
+        doReturn(Optional.empty()).when(mockPerformanceCycleService).findById(cycleId);
 
         // Execute
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);

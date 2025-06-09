@@ -8,6 +8,7 @@ import com.agilecheckup.service.QuestionService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -40,7 +41,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
 
       // GET /questions
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /questions/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -86,8 +87,15 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(questionService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    String tenantId = queryParams != null ? queryParams.get("tenantId") : null;
+    if (tenantId == null) {
+      return ResponseBuilder.buildResponse(400, "Missing required query parameter: tenantId");
+    }
+
+    PaginatedQueryList<Question> questions = questionService.findAllByTenantId(tenantId);
+    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(questions));
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
@@ -123,7 +131,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         Double.valueOf(requestMap.get("points").toString()),
         (String) requestMap.get("assessmentMatrixId"),
         (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId")
+        (String) requestMap.get("categoryId"),
+        (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
@@ -154,7 +163,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         options,
         (String) requestMap.get("assessmentMatrixId"),
         (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId")
+        (String) requestMap.get("categoryId"),
+        (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
@@ -178,7 +188,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         Double.valueOf(requestMap.get("points").toString()),
         (String) requestMap.get("assessmentMatrixId"),
         (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId")
+        (String) requestMap.get("categoryId"),
+        (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
@@ -210,7 +221,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         options,
         (String) requestMap.get("assessmentMatrixId"),
         (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId")
+        (String) requestMap.get("categoryId"),
+        (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {

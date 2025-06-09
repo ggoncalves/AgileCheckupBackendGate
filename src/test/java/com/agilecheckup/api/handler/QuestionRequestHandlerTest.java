@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -61,9 +62,13 @@ class QuestionRequestHandlerTest {
     @Test
     void shouldSuccessfullyGetAllQuestions() {
         // Given
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "tenant-123");
+        
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/questions")
-                .withHttpMethod("GET");
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
 
         Question question1 = Question.builder()
                 .id("q-1")
@@ -89,18 +94,33 @@ class QuestionRequestHandlerTest {
                 .categoryName("Category Name")
                 .build();
 
-        PaginatedScanList<Question> questions = mock(PaginatedScanList.class);
+        PaginatedQueryList<Question> questions = mock(PaginatedQueryList.class);
         doReturn(Arrays.asList(question1, question2).iterator()).when(questions).iterator();
-        doReturn(questions).when(questionService).findAll();
+        doReturn(questions).when(questionService).findAllByTenantId("tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(questionService).findAll();
+        verify(questionService).findAllByTenantId("tenant-123");
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("How effective is your team?");
         assertThat(response.getBody()).contains("Rate your satisfaction");
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenTenantIdMissingInGetAll() {
+        // Given
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/questions")
+                .withHttpMethod("GET");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("Missing required query parameter: tenantId");
     }
 
     @Test
@@ -180,7 +200,8 @@ class QuestionRequestHandlerTest {
                 "  \"points\": 10.0,\n" +
                 "  \"assessmentMatrixId\": \"matrix-123\",\n" +
                 "  \"pillarId\": \"pillar-123\",\n" +
-                "  \"categoryId\": \"category-123\"\n" +
+                "  \"categoryId\": \"category-123\",\n" +
+                "  \"extraDescription\": \"Test extra description\"\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -207,7 +228,8 @@ class QuestionRequestHandlerTest {
                 eq(10.0),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
 
         // When
@@ -221,7 +243,8 @@ class QuestionRequestHandlerTest {
                 eq(10.0),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
         assertThat(response.getStatusCode()).isEqualTo(201);
         assertThat(response.getBody()).contains("new-question-id");
@@ -243,7 +266,8 @@ class QuestionRequestHandlerTest {
                 "  ],\n" +
                 "  \"assessmentMatrixId\": \"matrix-123\",\n" +
                 "  \"pillarId\": \"pillar-123\",\n" +
-                "  \"categoryId\": \"category-123\"\n" +
+                "  \"categoryId\": \"category-123\",\n" +
+                "  \"extraDescription\": \"Test extra description\"\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -272,7 +296,8 @@ class QuestionRequestHandlerTest {
                 anyList(),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
 
         // When
@@ -288,7 +313,8 @@ class QuestionRequestHandlerTest {
                 argThat(list -> list.size() == 3),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
         assertThat(response.getStatusCode()).isEqualTo(201);
         assertThat(response.getBody()).contains("new-custom-question-id");
@@ -305,7 +331,8 @@ class QuestionRequestHandlerTest {
                 "  \"points\": 10.0,\n" +
                 "  \"assessmentMatrixId\": \"matrix-123\",\n" +
                 "  \"pillarId\": \"pillar-123\",\n" +
-                "  \"categoryId\": \"category-123\"\n" +
+                "  \"categoryId\": \"category-123\",\n" +
+                "  \"extraDescription\": \"Test extra description\"\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -333,7 +360,8 @@ class QuestionRequestHandlerTest {
                 eq(10.0),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
 
         // When
@@ -348,7 +376,8 @@ class QuestionRequestHandlerTest {
                 eq(10.0),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("Updated question text");
@@ -370,7 +399,8 @@ class QuestionRequestHandlerTest {
                 "  ],\n" +
                 "  \"assessmentMatrixId\": \"matrix-123\",\n" +
                 "  \"pillarId\": \"pillar-123\",\n" +
-                "  \"categoryId\": \"category-123\"\n" +
+                "  \"categoryId\": \"category-123\",\n" +
+                "  \"extraDescription\": \"Test extra description\"\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -400,7 +430,8 @@ class QuestionRequestHandlerTest {
                 anyList(),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
 
         // When
@@ -417,7 +448,8 @@ class QuestionRequestHandlerTest {
                 argThat(list -> list.size() == 2),
                 eq("matrix-123"),
                 eq("pillar-123"),
-                eq("category-123")
+                eq("category-123"),
+                eq("Test extra description")
         );
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("Updated custom question");
@@ -483,7 +515,8 @@ class QuestionRequestHandlerTest {
                 "  \"points\": 10.0,\n" +
                 "  \"assessmentMatrixId\": \"matrix-123\",\n" +
                 "  \"pillarId\": \"pillar-123\",\n" +
-                "  \"categoryId\": \"category-123\"\n" +
+                "  \"categoryId\": \"category-123\",\n" +
+                "  \"extraDescription\": \"Test extra description\"\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()

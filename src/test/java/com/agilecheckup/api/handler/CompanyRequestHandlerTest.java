@@ -52,6 +52,8 @@ class CompanyRequestHandlerTest {
   @BeforeEach
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
+    // Configure Jackson to handle empty strings as null for enums (same as ApiGatewayHandler)
+    objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     lenient().doReturn(companyService).when(serviceComponent).buildCompanyService();
     lenient().doReturn(lambdaLogger).when(context).getLogger();
     handler = new CompanyRequestHandler(serviceComponent, objectMapper);
@@ -490,5 +492,89 @@ class CompanyRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(404);
     assertThat(response.getBody()).contains("Company not found or update failed");
+  }
+
+  @Test
+  void shouldSuccessfullyUpdateCompanyWithEmptyGenderFields() {
+    // Given - This test reproduces the bug where empty strings for gender cause Jackson deserialization to fail
+    String companyId = "existing-company-id";
+    String requestBody = "{\n" +
+        "  \"name\": \"New Company without Optional Fields\",\n" +
+        "  \"email\": \"glauciocgoncalves@gmail.com\",\n" +
+        "  \"tenantId\": \"new-company-tenant\",\n" +
+        "  \"documentNumber\": \"74.790.229/0001-03\",\n" +
+        "  \"description\": \"New Company without Optional Fields\",\n" +
+        "  \"size\": \"STARTUP\",\n" +
+        "  \"industry\": \"NONPROFIT\",\n" +
+        "  \"website\": \"\",\n" +
+        "  \"legalName\": \"\",\n" +
+        "  \"phone\": \"\",\n" +
+        "  \"contactPerson\": {\n" +
+        "    \"id\": \"55de44ae-fd83-45cf-be3d-665fbeca0ee3\",\n" +
+        "    \"createdDate\": null,\n" +
+        "    \"lastUpdatedDate\": null,\n" +
+        "    \"name\": \"Carla\",\n" +
+        "    \"email\": \"carla@gmail.com\",\n" +
+        "    \"phone\": \"\",\n" +
+        "    \"address\": null,\n" +
+        "    \"personDocumentType\": \"CPF\",\n" +
+        "    \"documentNumber\": \"\",\n" +
+        "    \"aliasName\": null,\n" +
+        "    \"gender\": \"\",\n" +
+        "    \"genderPronoun\": \"\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/companies/" + companyId)
+        .withHttpMethod("PUT")
+        .withBody(requestBody);
+
+    Company updatedCompany = Company.builder()
+        .id(companyId)
+        .name("New Company without Optional Fields")
+        .email("glauciocgoncalves@gmail.com")
+        .tenantId("new-company-tenant")
+        .documentNumber("74.790.229/0001-03")
+        .description("New Company without Optional Fields")
+        .size(CompanySize.STARTUP)
+        .industry(Industry.NONPROFIT)
+        .website("")
+        .legalName("")
+        .build();
+
+    doReturn(Optional.of(updatedCompany)).when(companyService).update(
+        anyString(), anyString(), anyString(), anyString(), anyString(), anyString(),
+        any(CompanySize.class), any(Industry.class), anyString(), anyString(),
+        any(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.getBody()).contains("New Company without Optional Fields");
+
+    // Verify that the contactPerson with empty gender fields was processed correctly
+    ArgumentCaptor<NaturalPerson> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPerson.class);
+    verify(companyService).update(
+        eq(companyId),
+        eq("74.790.229/0001-03"),
+        eq("New Company without Optional Fields"),
+        eq("glauciocgoncalves@gmail.com"),
+        eq("New Company without Optional Fields"),
+        eq("new-company-tenant"),
+        eq(CompanySize.STARTUP),
+        eq(Industry.NONPROFIT),
+        eq(""),
+        eq(""),
+        contactPersonCaptor.capture(),
+        any());
+
+    NaturalPerson capturedContactPerson = contactPersonCaptor.getValue();
+    assertThat(capturedContactPerson.getName()).isEqualTo("Carla");
+    assertThat(capturedContactPerson.getEmail()).isEqualTo("carla@gmail.com");
+    assertThat(capturedContactPerson.getGender()).isNull(); // Empty string should be converted to null
+    assertThat(capturedContactPerson.getGenderPronoun()).isNull(); // Empty string should be converted to null
   }
 }

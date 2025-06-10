@@ -3,7 +3,6 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.EmployeeAssessment;
 import com.agilecheckup.persistency.entity.EmployeeAssessmentScore;
-import com.agilecheckup.persistency.entity.Team;
 import com.agilecheckup.persistency.entity.person.NaturalPerson;
 import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
@@ -75,13 +74,7 @@ class EmployeeAssessmentRequestHandlerTest {
                         .gender(Gender.MALE)
                         .genderPronoun(GenderPronoun.HE)
                         .build())
-                .team(Team.builder()
-                        .id("team-123")
-                        .name("Development Team")
-                        .description("Main development team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-123")
                 .build();
 
         EmployeeAssessment assessment2 = EmployeeAssessment.builder()
@@ -93,13 +86,7 @@ class EmployeeAssessmentRequestHandlerTest {
                         .gender(Gender.FEMALE)
                         .genderPronoun(GenderPronoun.SHE)
                         .build())
-                .team(Team.builder()
-                        .id("team-123")
-                        .name("Development Team")
-                        .description("Main development team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-123")
                 .build();
 
         PaginatedScanList<EmployeeAssessment> assessments = mock(PaginatedScanList.class);
@@ -133,13 +120,7 @@ class EmployeeAssessmentRequestHandlerTest {
                         .gender(Gender.MALE)
                         .genderPronoun(GenderPronoun.HE)
                         .build())
-                .team(Team.builder()
-                        .id("team-123")
-                        .name("Development Team")
-                        .description("Main development team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-123")
                 .build();
 
         doReturn(Optional.of(assessment)).when(employeeAssessmentService).findById(assessmentId);
@@ -181,13 +162,7 @@ class EmployeeAssessmentRequestHandlerTest {
                         .gender(Gender.MALE)
                         .genderPronoun(GenderPronoun.HE)
                         .build())
-                .team(Team.builder()
-                        .id("team-123")
-                        .name("Development Team")
-                        .description("Main development team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-123")
                 .build();
 
         doReturn(Optional.of(createdAssessment)).when(employeeAssessmentService).create(
@@ -248,13 +223,7 @@ class EmployeeAssessmentRequestHandlerTest {
                         .gender(Gender.MALE)
                         .genderPronoun(GenderPronoun.HE)
                         .build())
-                .team(Team.builder()
-                        .id("team-456")
-                        .name("QA Team")
-                        .description("Quality assurance team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-456")
                 .build();
 
         doReturn(Optional.of(updatedAssessment)).when(employeeAssessmentService).update(
@@ -308,13 +277,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessment assessmentWithScore = EmployeeAssessment.builder()
                 .id(assessmentId)
                 .assessmentMatrixId("am-123")
-                .team(Team.builder()
-                        .id("team-123")
-                        .name("Development Team")
-                        .description("Main development team")
-                        .departmentId("dept-123")
-                        .tenantId("tenant-123")
-                        .build())
+                .teamId("team-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
@@ -405,6 +368,64 @@ class EmployeeAssessmentRequestHandlerTest {
         // Then
         assertThat(response.getStatusCode()).isEqualTo(404);
         assertThat(response.getBody()).contains("Employee assessment not found");
+    }
+
+    @Test
+    void shouldSuccessfullyCreateEmployeeAssessmentWithNullGenderFields() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"teamId\": \"team-123\",\n" +
+                "  \"name\": \"John Doe\",\n" +
+                "  \"email\": \"john.doe@example.com\",\n" +
+                "  \"documentNumber\": \"123456789\",\n" +
+                "  \"documentType\": \"CPF\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        EmployeeAssessment createdAssessment = EmployeeAssessment.builder()
+                .id("new-ea-id")
+                .assessmentMatrixId("am-123")
+                .employee(NaturalPerson.builder()
+                        .email("john.doe@example.com")
+                        .name("John Doe")
+                        .gender(null)
+                        .genderPronoun(null)
+                        .build())
+                .teamId("team-123")
+                .build();
+
+        doReturn(Optional.of(createdAssessment)).when(employeeAssessmentService).create(
+                eq("am-123"),
+                eq("team-123"),
+                eq("John Doe"),
+                eq("john.doe@example.com"),
+                eq("123456789"),
+                eq(PersonDocumentType.CPF),
+                eq(null),
+                eq(null)
+        );
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).create(
+                eq("am-123"),
+                eq("team-123"),
+                eq("John Doe"),
+                eq("john.doe@example.com"),
+                eq("123456789"),
+                eq(PersonDocumentType.CPF),
+                eq(null),
+                eq(null)
+        );
+        assertThat(response.getStatusCode()).isEqualTo(201);
+        assertThat(response.getBody()).contains("new-ea-id");
     }
 
     @Test

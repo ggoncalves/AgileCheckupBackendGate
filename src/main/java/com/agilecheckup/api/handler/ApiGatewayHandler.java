@@ -32,6 +32,9 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
     // Register JavaTimeModule to handle LocalDateTime serialization/deserialization
     objectMapper.registerModule(new JavaTimeModule());
     objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    
+    // Configure Jackson to handle empty strings as null for enums (to support optional Gender/GenderPronoun)
+    objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
 
     // Register all handlers
     this.routeHandlers.put("companies", new CompanyRequestHandler(serviceComponent, objectMapper));

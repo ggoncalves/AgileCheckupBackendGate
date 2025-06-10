@@ -92,9 +92,15 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    // Parse enums from strings
-    Gender gender = Gender.valueOf((String) requestMap.get("gender"));
-    GenderPronoun genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    // Parse enums from strings (nullable)
+    Gender gender = null;
+    if (requestMap.get("gender") != null) {
+      gender = Gender.valueOf((String) requestMap.get("gender"));
+    }
+    GenderPronoun genderPronoun = null;
+    if (requestMap.get("genderPronoun") != null) {
+      genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    }
     PersonDocumentType documentType = null;
     if (requestMap.get("documentType") != null) {
       documentType = PersonDocumentType.valueOf((String) requestMap.get("documentType"));
@@ -121,9 +127,15 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    // Parse enums from strings
-    Gender gender = Gender.valueOf((String) requestMap.get("gender"));
-    GenderPronoun genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    // Parse enums from strings (nullable)
+    Gender gender = null;
+    if (requestMap.get("gender") != null) {
+      gender = Gender.valueOf((String) requestMap.get("gender"));
+    }
+    GenderPronoun genderPronoun = null;
+    if (requestMap.get("genderPronoun") != null) {
+      genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    }
     PersonDocumentType documentType = null;
     if (requestMap.get("documentType") != null) {
       documentType = PersonDocumentType.valueOf((String) requestMap.get("documentType"));

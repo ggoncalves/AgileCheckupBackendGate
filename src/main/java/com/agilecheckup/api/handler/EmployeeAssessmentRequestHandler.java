@@ -38,12 +38,12 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
 
       // GET /employeeassessments
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
-        return handleGetAll();
+        return handleGetAll(input);
       }
       // GET /employeeassessments/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
         String id = extractIdFromPath(path);
-        return handleGetById(id);
+        return handleGetById(id, input);
       }
       // POST /employeeassessments
       else if (method.equals("POST") && GET_ALL_PATTERN.matcher(path).matches()) {
@@ -75,12 +75,36 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     }
   }
 
-  private APIGatewayProxyResponseEvent handleGetAll() throws Exception {
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessmentService.findAll()));
+  private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    
+    if (queryParams == null || !queryParams.containsKey("tenantId")) {
+      return ResponseBuilder.buildResponse(400, "tenantId is required");
+    }
+    
+    String tenantId = queryParams.get("tenantId");
+    String assessmentMatrixId = queryParams.get("assessmentMatrixId");
+    
+    if (assessmentMatrixId != null && !assessmentMatrixId.isEmpty()) {
+      // Filter by assessment matrix
+      return ResponseBuilder.buildResponse(200, 
+          objectMapper.writeValueAsString(employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId)));
+    } else {
+      // Return all for tenant
+      return ResponseBuilder.buildResponse(200, 
+          objectMapper.writeValueAsString(employeeAssessmentService.findAllByTenantId(tenantId)));
+    }
   }
 
-  private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.findById(id);
+  private APIGatewayProxyResponseEvent handleGetById(String id, APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    
+    if (queryParams == null || !queryParams.containsKey("tenantId")) {
+      return ResponseBuilder.buildResponse(400, "tenantId is required");
+    }
+    
+    String tenantId = queryParams.get("tenantId");
+    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.findById(id, tenantId);
 
     if (employeeAssessment.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment.get()));
@@ -90,71 +114,55 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
 
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
-    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
-
-    // Parse enums from strings (nullable)
-    Gender gender = null;
-    if (requestMap.get("gender") != null) {
-      gender = Gender.valueOf((String) requestMap.get("gender"));
+    EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
+    
+    // Validate required fields
+    if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
+      return ResponseBuilder.buildResponse(400, "tenantId is required");
     }
-    GenderPronoun genderPronoun = null;
-    if (requestMap.get("genderPronoun") != null) {
-      genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
+    if (employeeAssessment.getAssessmentMatrixId() == null || employeeAssessment.getAssessmentMatrixId().isEmpty()) {
+      return ResponseBuilder.buildResponse(400, "assessmentMatrixId is required");
     }
-    PersonDocumentType documentType = null;
-    if (requestMap.get("documentType") != null) {
-      documentType = PersonDocumentType.valueOf((String) requestMap.get("documentType"));
+    if (employeeAssessment.getEmployee() == null || 
+        employeeAssessment.getEmployee().getEmail() == null || 
+        employeeAssessment.getEmployee().getEmail().isEmpty()) {
+      return ResponseBuilder.buildResponse(400, "employee email is required");
     }
-
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.create(
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("teamId"),
-        (String) requestMap.get("name"),
-        (String) requestMap.get("email"),
-        (String) requestMap.get("documentNumber"),
-        documentType,
-        gender,
-        genderPronoun
-    );
-
-    if (employeeAssessment.isPresent()) {
-      return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(employeeAssessment.get()));
+    
+    // Set default status if not provided
+    if (employeeAssessment.getAssessmentStatus() == null) {
+      employeeAssessment.setAssessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.INVITED);
+    }
+    if (employeeAssessment.getAnsweredQuestionCount() == null) {
+      employeeAssessment.setAnsweredQuestionCount(0);
+    }
+    
+    // Create through service
+    EmployeeAssessment created = employeeAssessmentService.save(employeeAssessment);
+    
+    if (created != null) {
+      return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
     } else {
       return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
     }
   }
 
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
-    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
-
-    // Parse enums from strings (nullable)
-    Gender gender = null;
-    if (requestMap.get("gender") != null) {
-      gender = Gender.valueOf((String) requestMap.get("gender"));
+    EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
+    
+    // Validate required fields
+    if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
+      return ResponseBuilder.buildResponse(400, "tenantId is required");
     }
-    GenderPronoun genderPronoun = null;
-    if (requestMap.get("genderPronoun") != null) {
-      genderPronoun = GenderPronoun.valueOf((String) requestMap.get("genderPronoun"));
-    }
-    PersonDocumentType documentType = null;
-    if (requestMap.get("documentType") != null) {
-      documentType = PersonDocumentType.valueOf((String) requestMap.get("documentType"));
-    }
-
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.update(
-        id,
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("teamId"),
-        (String) requestMap.get("name"),
-        (String) requestMap.get("email"),
-        (String) requestMap.get("documentNumber"),
-        documentType,
-        gender,
-        genderPronoun
-    );
-
-    if (employeeAssessment.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment.get()));
+    
+    // Set the ID from path
+    employeeAssessment.setId(id);
+    
+    // Update through service
+    EmployeeAssessment updated = employeeAssessmentService.save(employeeAssessment);
+    
+    if (updated != null) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(updated));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
     }
@@ -174,12 +182,10 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.findById(id);
-
-    if (employeeAssessment.isPresent()) {
-      employeeAssessmentService.delete(employeeAssessment.get());
+    try {
+      employeeAssessmentService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
-    } else {
+    } catch (Exception e) {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found");
     }
   }

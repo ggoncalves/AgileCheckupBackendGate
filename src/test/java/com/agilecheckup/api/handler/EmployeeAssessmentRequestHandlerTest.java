@@ -21,7 +21,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,6 +34,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,12 +65,17 @@ class EmployeeAssessmentRequestHandlerTest {
     @Test
     void shouldSuccessfullyGetAllEmployeeAssessments() {
         // Given
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+        
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/employeeassessments")
-                .withHttpMethod("GET");
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
 
         EmployeeAssessment assessment1 = EmployeeAssessment.builder()
                 .id("ea-1")
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
@@ -79,6 +88,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment assessment2 = EmployeeAssessment.builder()
                 .id("ea-2")
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("jane.smith@example.com")
@@ -89,15 +99,14 @@ class EmployeeAssessmentRequestHandlerTest {
                 .teamId("team-123")
                 .build();
 
-        PaginatedScanList<EmployeeAssessment> assessments = mock(PaginatedScanList.class);
-        doReturn(Arrays.asList(assessment1, assessment2).iterator()).when(assessments).iterator();
-        doReturn(assessments).when(employeeAssessmentService).findAll();
+        List<EmployeeAssessment> assessmentList = Arrays.asList(assessment1, assessment2);
+        doReturn(assessmentList).when(employeeAssessmentService).findAllByTenantId("test-tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).findAll();
+        verify(employeeAssessmentService).findAllByTenantId("test-tenant-123");
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("John Doe");
         assertThat(response.getBody()).contains("Jane Smith");
@@ -107,12 +116,17 @@ class EmployeeAssessmentRequestHandlerTest {
     void shouldSuccessfullyGetEmployeeAssessmentById() {
         // Given
         String assessmentId = "ea-123";
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+        
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/employeeassessments/" + assessmentId)
-                .withHttpMethod("GET");
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
 
         EmployeeAssessment assessment = EmployeeAssessment.builder()
                 .id(assessmentId)
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
@@ -123,13 +137,13 @@ class EmployeeAssessmentRequestHandlerTest {
                 .teamId("team-123")
                 .build();
 
-        doReturn(Optional.of(assessment)).when(employeeAssessmentService).findById(assessmentId);
+        doReturn(Optional.of(assessment)).when(employeeAssessmentService).findById(assessmentId, "test-tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).findById(assessmentId);
+        verify(employeeAssessmentService).findById(assessmentId, "test-tenant-123");
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("john.doe@example.com");
     }
@@ -138,14 +152,17 @@ class EmployeeAssessmentRequestHandlerTest {
     void shouldSuccessfullyCreateEmployeeAssessment() {
         // Given
         String requestBody = "{\n" +
+                "  \"tenantId\": \"test-tenant-123\",\n" +
                 "  \"assessmentMatrixId\": \"am-123\",\n" +
                 "  \"teamId\": \"team-123\",\n" +
-                "  \"name\": \"John Doe\",\n" +
-                "  \"email\": \"john.doe@example.com\",\n" +
-                "  \"documentNumber\": \"123456789\",\n" +
-                "  \"documentType\": \"CPF\",\n" +
-                "  \"gender\": \"MALE\",\n" +
-                "  \"genderPronoun\": \"HE\"\n" +
+                "  \"employee\": {\n" +
+                "    \"name\": \"John Doe\",\n" +
+                "    \"email\": \"john.doe@example.com\",\n" +
+                "    \"documentNumber\": \"123456789\",\n" +
+                "    \"personDocumentType\": \"CPF\",\n" +
+                "    \"gender\": \"MALE\",\n" +
+                "    \"genderPronoun\": \"HE\"\n" +
+                "  }\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -155,6 +172,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment createdAssessment = EmployeeAssessment.builder()
                 .id("new-ea-id")
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
@@ -165,31 +183,13 @@ class EmployeeAssessmentRequestHandlerTest {
                 .teamId("team-123")
                 .build();
 
-        doReturn(Optional.of(createdAssessment)).when(employeeAssessmentService).create(
-                eq("am-123"),
-                eq("team-123"),
-                eq("John Doe"),
-                eq("john.doe@example.com"),
-                eq("123456789"),
-                eq(PersonDocumentType.CPF),
-                eq(Gender.MALE),
-                eq(GenderPronoun.HE)
-        );
+        doReturn(createdAssessment).when(employeeAssessmentService).save(any(EmployeeAssessment.class));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).create(
-                eq("am-123"),
-                eq("team-123"),
-                eq("John Doe"),
-                eq("john.doe@example.com"),
-                eq("123456789"),
-                eq(PersonDocumentType.CPF),
-                eq(Gender.MALE),
-                eq(GenderPronoun.HE)
-        );
+        verify(employeeAssessmentService).save(any(EmployeeAssessment.class));
         assertThat(response.getStatusCode()).isEqualTo(201);
         assertThat(response.getBody()).contains("new-ea-id");
     }
@@ -199,14 +199,17 @@ class EmployeeAssessmentRequestHandlerTest {
         // Given
         String assessmentId = "existing-ea-id";
         String requestBody = "{\n" +
+                "  \"tenantId\": \"test-tenant-123\",\n" +
                 "  \"assessmentMatrixId\": \"am-456\",\n" +
                 "  \"teamId\": \"team-456\",\n" +
-                "  \"name\": \"John Updated\",\n" +
-                "  \"email\": \"john.updated@example.com\",\n" +
-                "  \"documentNumber\": \"987654321\",\n" +
-                "  \"documentType\": \"CPF\",\n" +
-                "  \"gender\": \"MALE\",\n" +
-                "  \"genderPronoun\": \"HE\"\n" +
+                "  \"employee\": {\n" +
+                "    \"name\": \"John Updated\",\n" +
+                "    \"email\": \"john.updated@example.com\",\n" +
+                "    \"documentNumber\": \"987654321\",\n" +
+                "    \"personDocumentType\": \"CPF\",\n" +
+                "    \"gender\": \"MALE\",\n" +
+                "    \"genderPronoun\": \"HE\"\n" +
+                "  }\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -216,6 +219,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment updatedAssessment = EmployeeAssessment.builder()
                 .id(assessmentId)
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-456")
                 .employee(NaturalPerson.builder()
                         .email("john.updated@example.com")
@@ -226,33 +230,13 @@ class EmployeeAssessmentRequestHandlerTest {
                 .teamId("team-456")
                 .build();
 
-        doReturn(Optional.of(updatedAssessment)).when(employeeAssessmentService).update(
-                eq(assessmentId),
-                eq("am-456"),
-                eq("team-456"),
-                eq("John Updated"),
-                eq("john.updated@example.com"),
-                eq("987654321"),
-                eq(PersonDocumentType.CPF),
-                eq(Gender.MALE),
-                eq(GenderPronoun.HE)
-        );
+        doReturn(updatedAssessment).when(employeeAssessmentService).save(any(EmployeeAssessment.class));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).update(
-                eq(assessmentId),
-                eq("am-456"),
-                eq("team-456"),
-                eq("John Updated"),
-                eq("john.updated@example.com"),
-                eq("987654321"),
-                eq(PersonDocumentType.CPF),
-                eq(Gender.MALE),
-                eq(GenderPronoun.HE)
-        );
+        verify(employeeAssessmentService).save(any(EmployeeAssessment.class));
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getBody()).contains("John Updated");
     }
@@ -276,6 +260,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment assessmentWithScore = EmployeeAssessment.builder()
                 .id(assessmentId)
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .teamId("team-123")
                 .employee(NaturalPerson.builder()
@@ -331,6 +316,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment assessment = EmployeeAssessment.builder()
                 .id(assessmentId)
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
@@ -340,14 +326,13 @@ class EmployeeAssessmentRequestHandlerTest {
                         .build())
                 .build();
 
-        doReturn(Optional.of(assessment)).when(employeeAssessmentService).findById(assessmentId);
+        // No setup needed - deleteById doesn't return anything
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).findById(assessmentId);
-        verify(employeeAssessmentService).delete(assessment);
+        verify(employeeAssessmentService).deleteById(assessmentId);
         assertThat(response.getStatusCode()).isEqualTo(204);
         assertThat(response.getBody()).isEmpty();
     }
@@ -356,11 +341,15 @@ class EmployeeAssessmentRequestHandlerTest {
     void shouldReturnNotFoundWhenEmployeeAssessmentDoesNotExist() {
         // Given
         String assessmentId = "non-existent";
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+        
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/employeeassessments/" + assessmentId)
-                .withHttpMethod("GET");
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
 
-        doReturn(Optional.empty()).when(employeeAssessmentService).findById(assessmentId);
+        doReturn(Optional.empty()).when(employeeAssessmentService).findById(assessmentId, "test-tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -374,12 +363,15 @@ class EmployeeAssessmentRequestHandlerTest {
     void shouldSuccessfullyCreateEmployeeAssessmentWithNullGenderFields() {
         // Given
         String requestBody = "{\n" +
+                "  \"tenantId\": \"test-tenant-123\",\n" +
                 "  \"assessmentMatrixId\": \"am-123\",\n" +
                 "  \"teamId\": \"team-123\",\n" +
-                "  \"name\": \"John Doe\",\n" +
-                "  \"email\": \"john.doe@example.com\",\n" +
-                "  \"documentNumber\": \"123456789\",\n" +
-                "  \"documentType\": \"CPF\"\n" +
+                "  \"employee\": {\n" +
+                "    \"name\": \"John Doe\",\n" +
+                "    \"email\": \"john.doe@example.com\",\n" +
+                "    \"documentNumber\": \"123456789\",\n" +
+                "    \"personDocumentType\": \"CPF\"\n" +
+                "  }\n" +
                 "}";
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -389,6 +381,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
         EmployeeAssessment createdAssessment = EmployeeAssessment.builder()
                 .id("new-ea-id")
+                .tenantId("test-tenant-123")
                 .assessmentMatrixId("am-123")
                 .employee(NaturalPerson.builder()
                         .email("john.doe@example.com")
@@ -399,31 +392,13 @@ class EmployeeAssessmentRequestHandlerTest {
                 .teamId("team-123")
                 .build();
 
-        doReturn(Optional.of(createdAssessment)).when(employeeAssessmentService).create(
-                eq("am-123"),
-                eq("team-123"),
-                eq("John Doe"),
-                eq("john.doe@example.com"),
-                eq("123456789"),
-                eq(PersonDocumentType.CPF),
-                eq(null),
-                eq(null)
-        );
+        doReturn(createdAssessment).when(employeeAssessmentService).save(any(EmployeeAssessment.class));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(employeeAssessmentService).create(
-                eq("am-123"),
-                eq("team-123"),
-                eq("John Doe"),
-                eq("john.doe@example.com"),
-                eq("123456789"),
-                eq(PersonDocumentType.CPF),
-                eq(null),
-                eq(null)
-        );
+        verify(employeeAssessmentService).save(any(EmployeeAssessment.class));
         assertThat(response.getStatusCode()).isEqualTo(201);
         assertThat(response.getBody()).contains("new-ea-id");
     }
@@ -471,11 +446,15 @@ class EmployeeAssessmentRequestHandlerTest {
     @Test
     void shouldReturnInternalServerErrorOnException() {
         // Given
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+        
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/employeeassessments")
-                .withHttpMethod("GET");
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
 
-        doThrow(new RuntimeException("Database error")).when(employeeAssessmentService).findAll();
+        doThrow(new RuntimeException("Database error")).when(employeeAssessmentService).findAllByTenantId("test-tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -484,5 +463,165 @@ class EmployeeAssessmentRequestHandlerTest {
         verify(lambdaLogger).log("Error in employee assessment endpoint: Database error");
         assertThat(response.getStatusCode()).isEqualTo(500);
         assertThat(response.getBody()).contains("Error processing employee assessment request");
+    }
+
+    @Test
+    void shouldFilterEmployeeAssessmentsByTenantId() {
+        // Given
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments")
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
+
+        EmployeeAssessment assessment1 = EmployeeAssessment.builder()
+                .id("ea-1")
+                .tenantId("test-tenant-123")
+                .assessmentMatrixId("am-123")
+                .employee(NaturalPerson.builder()
+                        .email("john.doe@example.com")
+                        .name("John Doe")
+                        .build())
+                .teamId("team-123")
+                .build();
+
+        EmployeeAssessment assessment2 = EmployeeAssessment.builder()
+                .id("ea-2")
+                .tenantId("test-tenant-123")
+                .assessmentMatrixId("am-123")
+                .employee(NaturalPerson.builder()
+                        .email("jane.smith@example.com")
+                        .name("Jane Smith")
+                        .build())
+                .teamId("team-123")
+                .build();
+
+        List<EmployeeAssessment> filteredAssessments = Arrays.asList(assessment1, assessment2);
+        doReturn(filteredAssessments).when(employeeAssessmentService).findAllByTenantId("test-tenant-123");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).findAllByTenantId("test-tenant-123");
+        verify(employeeAssessmentService, never()).findAll();
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getBody()).contains("John Doe", "Jane Smith");
+    }
+
+    @Test
+    void shouldFilterByTenantIdAndAssessmentMatrixId() {
+        // Given
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+        queryParams.put("assessmentMatrixId", "am-123");
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments")
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
+
+        EmployeeAssessment assessment = EmployeeAssessment.builder()
+                .id("ea-1")
+                .tenantId("test-tenant-123")
+                .assessmentMatrixId("am-123")
+                .employee(NaturalPerson.builder()
+                        .email("john.doe@example.com")
+                        .name("John Doe")
+                        .build())
+                .teamId("team-123")
+                .build();
+
+        List<EmployeeAssessment> filteredAssessments = Collections.singletonList(assessment);
+        doReturn(filteredAssessments).when(employeeAssessmentService)
+                .findByAssessmentMatrix("am-123", "test-tenant-123");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).findByAssessmentMatrix("am-123", "test-tenant-123");
+        verify(employeeAssessmentService, never()).findAllByTenantId(anyString());
+        verify(employeeAssessmentService, never()).findAll();
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getBody()).contains("John Doe");
+    }
+
+    @Test
+    void shouldGetAssessmentByIdWithTenantValidation() {
+        // Given
+        String assessmentId = "ea-123";
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "test-tenant-123");
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/" + assessmentId)
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
+
+        EmployeeAssessment assessment = EmployeeAssessment.builder()
+                .id(assessmentId)
+                .tenantId("test-tenant-123")
+                .assessmentMatrixId("am-123")
+                .employee(NaturalPerson.builder()
+                        .email("john.doe@example.com")
+                        .name("John Doe")
+                        .build())
+                .teamId("team-123")
+                .build();
+
+        doReturn(Optional.of(assessment)).when(employeeAssessmentService).findById(assessmentId, "test-tenant-123");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).findById(assessmentId, "test-tenant-123");
+        verify(employeeAssessmentService, never()).findById(assessmentId);
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getBody()).contains("John Doe");
+    }
+
+    @Test
+    void shouldReturn404WhenAssessmentNotFoundWithTenantFilter() {
+        // Given
+        String assessmentId = "ea-123";
+        Map<String, String> queryParams = new HashMap<>();
+        queryParams.put("tenantId", "different-tenant");
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/" + assessmentId)
+                .withHttpMethod("GET")
+                .withQueryStringParameters(queryParams);
+
+        doReturn(Optional.empty()).when(employeeAssessmentService).findById(assessmentId, "different-tenant");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(404);
+        assertThat(response.getBody()).contains("Employee assessment not found");
+    }
+
+    @Test
+    void shouldDeleteAssessmentUsingDeleteById() {
+        // Given
+        String assessmentId = "ea-to-delete";
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/" + assessmentId)
+                .withHttpMethod("DELETE");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).deleteById(assessmentId);
+        verify(employeeAssessmentService, never()).findById(assessmentId);
+        verify(employeeAssessmentService, never()).delete(any());
+        assertThat(response.getStatusCode()).isEqualTo(204);
+        assertThat(response.getBody()).isEmpty();
     }
 }

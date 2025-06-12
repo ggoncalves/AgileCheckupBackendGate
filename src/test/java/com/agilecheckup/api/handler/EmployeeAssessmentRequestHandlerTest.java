@@ -624,4 +624,41 @@ class EmployeeAssessmentRequestHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(204);
         assertThat(response.getBody()).isEmpty();
     }
+
+    @Test
+    void shouldReturn409ConflictWhenCreatingDuplicateEmployeeAssessment() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"tenantId\": \"test-tenant-123\",\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"teamId\": \"team-123\",\n" +
+                "  \"employee\": {\n" +
+                "    \"name\": \"John Doe\",\n" +
+                "    \"email\": \"john.doe@example.com\",\n" +
+                "    \"documentNumber\": \"123456789\",\n" +
+                "    \"personDocumentType\": \"CPF\",\n" +
+                "    \"gender\": \"MALE\",\n" +
+                "    \"genderPronoun\": \"HE\"\n" +
+                "  }\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        // Mock the service to throw EmployeeAssessmentAlreadyExistsException
+        doThrow(new com.agilecheckup.service.exception.EmployeeAssessmentAlreadyExistsException("john.doe@example.com", "am-123"))
+                .when(employeeAssessmentService).save(any(EmployeeAssessment.class));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).save(any(EmployeeAssessment.class));
+        assertThat(response.getStatusCode()).isEqualTo(409);
+        assertThat(response.getBody()).contains("Duplicate employee assessment");
+        assertThat(response.getBody()).contains("john.doe@example.com");
+        assertThat(response.getBody()).contains("am-123");
+    }
 }

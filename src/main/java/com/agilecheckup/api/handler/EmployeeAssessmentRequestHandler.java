@@ -114,36 +114,46 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
 
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
-    EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
-    
-    // Validate required fields
-    if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
-      return ResponseBuilder.buildResponse(400, "tenantId is required");
-    }
-    if (employeeAssessment.getAssessmentMatrixId() == null || employeeAssessment.getAssessmentMatrixId().isEmpty()) {
-      return ResponseBuilder.buildResponse(400, "assessmentMatrixId is required");
-    }
-    if (employeeAssessment.getEmployee() == null || 
-        employeeAssessment.getEmployee().getEmail() == null || 
-        employeeAssessment.getEmployee().getEmail().isEmpty()) {
-      return ResponseBuilder.buildResponse(400, "employee email is required");
-    }
-    
-    // Set default status if not provided
-    if (employeeAssessment.getAssessmentStatus() == null) {
-      employeeAssessment.setAssessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.INVITED);
-    }
-    if (employeeAssessment.getAnsweredQuestionCount() == null) {
-      employeeAssessment.setAnsweredQuestionCount(0);
-    }
-    
-    // Create through service
-    EmployeeAssessment created = employeeAssessmentService.save(employeeAssessment);
-    
-    if (created != null) {
-      return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
-    } else {
-      return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
+    try {
+      EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
+      
+      // Validate required fields
+      if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
+        return ResponseBuilder.buildResponse(400, "tenantId is required");
+      }
+      if (employeeAssessment.getAssessmentMatrixId() == null || employeeAssessment.getAssessmentMatrixId().isEmpty()) {
+        return ResponseBuilder.buildResponse(400, "assessmentMatrixId is required");
+      }
+      if (employeeAssessment.getEmployee() == null || 
+          employeeAssessment.getEmployee().getEmail() == null || 
+          employeeAssessment.getEmployee().getEmail().isEmpty()) {
+        return ResponseBuilder.buildResponse(400, "employee email is required");
+      }
+      
+      // Set default status if not provided
+      if (employeeAssessment.getAssessmentStatus() == null) {
+        employeeAssessment.setAssessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.INVITED);
+      }
+      if (employeeAssessment.getAnsweredQuestionCount() == null) {
+        employeeAssessment.setAnsweredQuestionCount(0);
+      }
+      
+      // Force validation for new entities by clearing the auto-generated ID
+      employeeAssessment.setId(null);
+      
+      // Create through service
+      EmployeeAssessment created = employeeAssessmentService.save(employeeAssessment);
+      
+      if (created != null) {
+        return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
+      } else {
+        return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
+      }
+      
+    } catch (com.agilecheckup.service.exception.EmployeeAssessmentAlreadyExistsException e) {
+      return ResponseBuilder.buildResponse(409, "Duplicate employee assessment: " + e.getMessage());
+    } catch (Exception e) {
+      throw e;
     }
   }
 

@@ -2,9 +2,6 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.EmployeeAssessment;
-import com.agilecheckup.persistency.entity.person.Gender;
-import com.agilecheckup.persistency.entity.person.GenderPronoun;
-import com.agilecheckup.persistency.entity.person.PersonDocumentType;
 import com.agilecheckup.service.EmployeeAssessmentService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -21,6 +18,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/employeeassessments/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/employeeassessments/([^/]+)/?$");
   private static final Pattern UPDATE_SCORE_PATTERN = Pattern.compile("^/employeeassessments/([^/]+)/score/?$");
+  private static final Pattern VALIDATE_PATTERN = Pattern.compile("^/employeeassessments/validate/?$");
 
   private final EmployeeAssessmentService employeeAssessmentService;
   private final ObjectMapper objectMapper;
@@ -39,6 +37,10 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       // GET /employeeassessments
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleGetAll(input);
+      }
+      // GET /employeeassessments/validate
+      else if (method.equals("GET") && VALIDATE_PATTERN.matcher(path).matches()) {
+        return handleValidateEmployee(input);
       }
       // GET /employeeassessments/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -207,5 +209,37 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       pathWithoutParams = path.replace("/score", "");
     }
     return pathWithoutParams.substring(pathWithoutParams.lastIndexOf("/") + 1);
+  }
+  
+  private APIGatewayProxyResponseEvent handleValidateEmployee(APIGatewayProxyRequestEvent input) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+    Map<String, String> headers = input.getHeaders();
+    
+    if (queryParams == null || !queryParams.containsKey("email") || !queryParams.containsKey("assessmentMatrixId")) {
+      return ResponseBuilder.buildResponse(400, "email and assessmentMatrixId are required");
+    }
+    
+    String email = queryParams.get("email");
+    String assessmentMatrixId = queryParams.get("assessmentMatrixId");
+    
+    // Get tenant ID from header (set by the invitation page after JWT validation)
+    String tenantId = headers != null ? headers.get("X-Tenant-ID") : null;
+    if (tenantId == null || tenantId.isEmpty()) {
+      return ResponseBuilder.buildResponse(400, "X-Tenant-ID header is required");
+    }
+    
+    // Find all employee assessments for this tenant
+    var assessments = employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId);
+    
+    // Find matching employee by email (case-insensitive)
+    Optional<EmployeeAssessment> matchingAssessment = assessments.stream()
+        .filter(assessment -> assessment.getEmployee().getEmail().equalsIgnoreCase(email))
+        .findFirst();
+        
+    if (matchingAssessment.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(matchingAssessment.get()));
+    } else {
+      return ResponseBuilder.buildResponse(404, "Employee not found in this assessment matrix");
+    }
   }
 }

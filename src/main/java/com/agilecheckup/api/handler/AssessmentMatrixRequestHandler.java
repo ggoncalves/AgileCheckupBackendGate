@@ -1,9 +1,7 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.AssessmentMatrix;
-import com.agilecheckup.persistency.entity.Category;
-import com.agilecheckup.persistency.entity.Pillar;
+import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -75,13 +73,17 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       // Create the pillar map with proper types
       Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
 
-      // Now create the assessment matrix with properly typed pillar map
+      // Create the assessment configuration if provided
+      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
+
+      // Now create the assessment matrix with properly typed pillar map and configuration
       Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.create(
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
           (String) requestMap.get("tenantId"),
           (String) requestMap.get("performanceCycleId"),
-          pillarMap
+          pillarMap,
+          configuration
       );
 
       if (assessmentMatrix.isPresent()) {
@@ -103,13 +105,17 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       // Create the pillar map with proper types
       Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
 
+      // Create the assessment configuration if provided
+      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
+
       Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.update(
           id,
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
           (String) requestMap.get("tenantId"),
           (String) requestMap.get("performanceCycleId"),
-          pillarMap
+          pillarMap,
+          configuration
       );
 
       if (assessmentMatrix.isPresent()) {
@@ -161,6 +167,45 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       }
     }
     return pillarMap;
+  }
+
+  private AssessmentConfiguration buildAssessmentConfiguration(Map<String, Object> requestMap) {
+    if (!hasConfiguration(requestMap)) {
+      return null;
+    }
+
+    Map<String, Object> configData = extractConfigurationData(requestMap);
+
+    return AssessmentConfiguration.builder()
+        .allowQuestionReview(getBooleanOrDefault(configData, "allowQuestionReview", true))
+        .requireAllQuestions(getBooleanOrDefault(configData, "requireAllQuestions", true))
+        .autoSave(getBooleanOrDefault(configData, "autoSave", true))
+        .navigationMode(getNavigationModeOrDefault(configData))
+        .build();
+  }
+
+  private boolean hasConfiguration(Map<String, Object> requestMap) {
+    return requestMap.containsKey("configuration") && requestMap.get("configuration") != null;
+  }
+
+  private Map<String, Object> extractConfigurationData(Map<String, Object> requestMap) {
+    return (Map<String, Object>) requestMap.get("configuration");
+  }
+
+  private Boolean getBooleanOrDefault(Map<String, Object> configData, String key, Boolean defaultValue) {
+    return configData.containsKey(key) ? (Boolean) configData.get(key) : defaultValue;
+  }
+
+  private QuestionNavigationType getNavigationModeOrDefault(Map<String, Object> configData) {
+    if (!configData.containsKey("navigationMode") || configData.get("navigationMode") == null) {
+      return QuestionNavigationType.RANDOM;
+    }
+
+    try {
+      return QuestionNavigationType.valueOf((String) configData.get("navigationMode"));
+    } catch (IllegalArgumentException e) {
+      return QuestionNavigationType.RANDOM;
+    }
   }
 
   private APIGatewayProxyResponseEvent handleUpdatePotentialScore(String id, String requestBody) throws Exception {

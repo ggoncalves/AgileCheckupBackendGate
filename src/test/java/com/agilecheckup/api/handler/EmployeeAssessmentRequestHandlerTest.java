@@ -8,6 +8,8 @@ import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
 import com.agilecheckup.persistency.entity.person.PersonDocumentType;
 import com.agilecheckup.service.EmployeeAssessmentService;
+import com.agilecheckup.service.dto.EmployeeValidationRequest;
+import com.agilecheckup.service.dto.EmployeeValidationResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -660,5 +662,193 @@ class EmployeeAssessmentRequestHandlerTest {
         assertThat(response.getBody()).contains("Duplicate employee assessment");
         assertThat(response.getBody()).contains("john.doe@example.com");
         assertThat(response.getBody()).contains("am-123");
+    }
+    
+    @Test
+    void shouldValidateEmployeeWithPostMethod() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"email\": \"john.doe@example.com\",\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"tenantId\": \"test-tenant-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        EmployeeValidationResponse validationResponse = EmployeeValidationResponse.success(
+                "Welcome! Your assessment access has been confirmed.",
+                "ea-123",
+                "John Doe",
+                "CONFIRMED"
+        );
+
+        doReturn(validationResponse).when(employeeAssessmentService).validateEmployee(any(EmployeeValidationRequest.class));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        verify(employeeAssessmentService).validateEmployee(any(EmployeeValidationRequest.class));
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getBody()).contains("SUCCESS");
+        assertThat(response.getBody()).contains("Welcome! Your assessment access has been confirmed.");
+        assertThat(response.getBody()).contains("ea-123");
+        assertThat(response.getBody()).contains("John Doe");
+        assertThat(response.getBody()).contains("CONFIRMED");
+    }
+    
+    @Test
+    void shouldReturn404WhenEmployeeNotFoundDuringValidation() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"email\": \"notfound@example.com\",\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"tenantId\": \"test-tenant-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        EmployeeValidationResponse validationResponse = EmployeeValidationResponse.error(
+                "We couldn't find your assessment invitation. Please check that you're using the same email address that HR used to invite you, or contact your HR department for assistance."
+        );
+
+        doReturn(validationResponse).when(employeeAssessmentService).validateEmployee(any(EmployeeValidationRequest.class));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(404);
+        assertThat(response.getBody()).contains("ERROR");
+        assertThat(response.getBody()).contains("couldn't find your assessment invitation");
+    }
+    
+    @Test
+    void shouldReturn400WhenValidationRequestMissingRequiredFields() {
+        // Given - missing email
+        String requestBody = "{\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"tenantId\": \"test-tenant-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("email is required");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
+    }
+    
+    @Test
+    void shouldReturn400WhenRequestBodyIsEmpty() {
+        // Given
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody("");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(500);
+        assertThat(response.getBody()).contains("Error validating employee");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
+    }
+    
+    @Test
+    void shouldReturn400WhenRequestBodyIsNull() {
+        // Given
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(null);
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(500);
+        assertThat(response.getBody()).contains("Error validating employee");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
+    }
+    
+    @Test
+    void shouldReturn400WhenEmailIsBlank() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"email\": \"  \",\n" +
+                "  \"assessmentMatrixId\": \"am-123\",\n" +
+                "  \"tenantId\": \"test-tenant-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("email is required");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
+    }
+    
+    @Test
+    void shouldReturn400WhenAssessmentMatrixIdIsMissing() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"email\": \"test@example.com\",\n" +
+                "  \"tenantId\": \"test-tenant-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("assessmentMatrixId is required");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
+    }
+    
+    @Test
+    void shouldReturn400WhenTenantIdIsMissing() {
+        // Given
+        String requestBody = "{\n" +
+                "  \"email\": \"test@example.com\",\n" +
+                "  \"assessmentMatrixId\": \"am-123\"\n" +
+                "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/employeeassessments/validate")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("tenantId is required");
+        verify(employeeAssessmentService, never()).validateEmployee(any());
     }
 }

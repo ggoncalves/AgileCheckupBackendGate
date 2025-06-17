@@ -7,6 +7,9 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.agilecheckup.service.dto.EmployeeValidationRequest;
+import com.agilecheckup.service.dto.EmployeeValidationResponse;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
 import java.util.Optional;
@@ -38,8 +41,8 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleGetAll(input);
       }
-      // GET /employeeassessments/validate
-      else if (method.equals("GET") && VALIDATE_PATTERN.matcher(path).matches()) {
+      // POST /employeeassessments/validate
+      else if (method.equals("POST") && VALIDATE_PATTERN.matcher(path).matches()) {
         return handleValidateEmployee(input);
       }
       // GET /employeeassessments/{id}
@@ -212,34 +215,70 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
   
   private APIGatewayProxyResponseEvent handleValidateEmployee(APIGatewayProxyRequestEvent input) throws Exception {
-    Map<String, String> queryParams = input.getQueryStringParameters();
-    Map<String, String> headers = input.getHeaders();
-    
-    if (queryParams == null || !queryParams.containsKey("email") || !queryParams.containsKey("assessmentMatrixId")) {
-      return ResponseBuilder.buildResponse(400, "email and assessmentMatrixId are required");
+    try {
+      EmployeeValidationRequest request = parseValidationRequest(input.getBody());
+      
+      Optional<APIGatewayProxyResponseEvent> validationError = validateRequestFields(request);
+      if (validationError.isPresent()) {
+        return validationError.get();
+      }
+      
+      return processEmployeeValidation(request);
+      
+    } catch (Exception e) {
+      return buildErrorResponse(e);
+    }
+  }
+  
+  private EmployeeValidationRequest parseValidationRequest(String requestBody) throws Exception {
+    if (StringUtils.isBlank(requestBody)) {
+      throw new IllegalArgumentException("Request body is required");
+    }
+    return objectMapper.readValue(requestBody, EmployeeValidationRequest.class);
+  }
+  
+  private Optional<APIGatewayProxyResponseEvent> validateRequestFields(EmployeeValidationRequest request) {
+    if (request == null) {
+      return Optional.of(ResponseBuilder.buildResponse(400, "Invalid request format"));
     }
     
-    String email = queryParams.get("email");
-    String assessmentMatrixId = queryParams.get("assessmentMatrixId");
-    
-    // Get tenant ID from header (set by the invitation page after JWT validation)
-    String tenantId = headers != null ? headers.get("X-Tenant-ID") : null;
-    if (tenantId == null || tenantId.isEmpty()) {
-      return ResponseBuilder.buildResponse(400, "X-Tenant-ID header is required");
+    if (StringUtils.isBlank(request.getEmail())) {
+      return Optional.of(ResponseBuilder.buildResponse(400, "email is required"));
     }
     
-    // Find all employee assessments for this tenant
-    var assessments = employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId);
-    
-    // Find matching employee by email (case-insensitive)
-    Optional<EmployeeAssessment> matchingAssessment = assessments.stream()
-        .filter(assessment -> assessment.getEmployee().getEmail().equalsIgnoreCase(email))
-        .findFirst();
-        
-    if (matchingAssessment.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(matchingAssessment.get()));
-    } else {
-      return ResponseBuilder.buildResponse(404, "Employee not found in this assessment matrix");
+    if (StringUtils.isBlank(request.getAssessmentMatrixId())) {
+      return Optional.of(ResponseBuilder.buildResponse(400, "assessmentMatrixId is required"));
     }
+    
+    if (StringUtils.isBlank(request.getTenantId())) {
+      return Optional.of(ResponseBuilder.buildResponse(400, "tenantId is required"));
+    }
+    
+    return Optional.empty();
+  }
+  
+  private APIGatewayProxyResponseEvent processEmployeeValidation(EmployeeValidationRequest request) throws Exception {
+    EmployeeValidationResponse response = employeeAssessmentService.validateEmployee(request);
+    
+    int httpStatus = determineHttpStatus(response);
+    String responseBody = objectMapper.writeValueAsString(response);
+    
+    return ResponseBuilder.buildResponse(httpStatus, responseBody);
+  }
+  
+  private int determineHttpStatus(EmployeeValidationResponse response) {
+    if (response == null || StringUtils.isBlank(response.getStatus())) {
+      return 500;
+    }
+    
+    return "ERROR".equals(response.getStatus()) ? 404 : 200;
+  }
+  
+  private APIGatewayProxyResponseEvent buildErrorResponse(Exception e) {
+    String errorMessage = StringUtils.isNotBlank(e.getMessage()) 
+        ? "Error validating employee: " + e.getMessage()
+        : "Error validating employee: Unknown error occurred";
+    
+    return ResponseBuilder.buildResponse(500, errorMessage);
   }
 }

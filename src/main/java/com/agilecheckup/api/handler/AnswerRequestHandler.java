@@ -93,9 +93,9 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(400, "Missing required query parameter: tenantId");
     }
 
-    // We need to use the repository directly since it's not exposed through the service
-    // This will need to be added to the AnswerService
-    return ResponseBuilder.buildResponse(501, "This endpoint is not yet implemented");
+    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(
+        answerService.findByEmployeeAssessmentId(employeeAssessmentId, tenantId)
+    ));
   }
 
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
@@ -155,4 +155,5 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
     // Extract ID from path like /answers/{id}
     return path.substring(path.lastIndexOf("/") + 1);
   }
+
 }

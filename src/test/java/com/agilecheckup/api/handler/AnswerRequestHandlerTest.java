@@ -137,8 +137,9 @@ class AnswerRequestHandlerTest {
     void shouldSuccessfullyGetAnswersByEmployeeAssessmentId() {
         // Given
         String employeeAssessmentId = "ea-123";
+        String tenantId = "tenant-123";
         Map<String, String> queryParams = new HashMap<>();
-        queryParams.put("tenantId", "tenant-123");
+        queryParams.put("tenantId", tenantId);
 
         APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
                 .withPath("/answers/employeeassessment/" + employeeAssessmentId)
@@ -154,20 +155,32 @@ class AnswerRequestHandlerTest {
                 .pillarId("pillar-1")
                 .categoryId("category-1")
                 .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
+                .tenantId(tenantId)
                 .build();
 
-        // This endpoint is not yet implemented in the handler
-        // List<Answer> answers = Arrays.asList(answer1);
-        // when(answerService.findByEmployeeAssessmentId(employeeAssessmentId, "tenant-123")).thenReturn(answers);
+        Answer answer2 = Answer.builder()
+                .id("answer-2")
+                .questionId("q-2")
+                .employeeAssessmentId(employeeAssessmentId)
+                .value("8")
+                .answeredAt(LocalDateTime.now())
+                .pillarId("pillar-1")
+                .categoryId("category-1")
+                .questionType(com.agilecheckup.persistency.entity.QuestionType.ONE_TO_TEN)
+                .tenantId(tenantId)
+                .build();
+
+        List<Answer> answers = Arrays.asList(answer1, answer2);
+        when(answerService.findByEmployeeAssessmentId(employeeAssessmentId, tenantId)).thenReturn(answers);
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        // The handler returns 501 Not Implemented for this endpoint
-        assertThat(response.getStatusCode()).isEqualTo(501);
-        assertThat(response.getBody()).contains("This endpoint is not yet implemented");
+        verify(answerService).findByEmployeeAssessmentId(employeeAssessmentId, tenantId);
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        assertThat(response.getBody()).contains("answer-1");
+        assertThat(response.getBody()).contains("answer-2");
     }
 
     @Test

@@ -42,6 +42,53 @@ class ApiGatewayHandlerTest {
     assertThat(response.getBody()).contains("Not Found");
   }
 
+  @Test
+  void handleRequest_invitationTokenGeneration_routesToInvitationHandler() {
+    // Given
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
+    request.setPath("/assessmentmatrices/matrix-123/generate-invitation-token");
+    request.setHttpMethod("POST");
+    request.setBody("{\"tenantId\": \"tenant-456\"}");
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.getBody()).contains("token");
+  }
+
+  @Test
+  void handleRequest_invitationTokenValidation_routesToInvitationHandler() {
+    // Given
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
+    request.setPath("/invitation/validate-token");
+    request.setHttpMethod("POST");
+    request.setBody("{\"token\": \"invalid.token\"}");
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    // Should route to invitation handler (not return 404 which means no routing happened)
+    assertThat(response.getStatusCode()).isNotEqualTo(404);
+  }
+
+  @Test
+  void handleRequest_companiesEndpoint_routesToCompanyHandler() {
+    // Given
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent();
+    request.setPath("/companies");
+    request.setHttpMethod("GET");
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    // Should route to company handler (not return 404 which means no routing happened)
+    assertThat(response.getStatusCode()).isNotEqualTo(404);
+  }
+
   // Helper class for mocking the Lambda logger
   private static class TestLogger implements com.amazonaws.services.lambda.runtime.LambdaLogger {
     @Override

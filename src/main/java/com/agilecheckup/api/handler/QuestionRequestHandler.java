@@ -4,7 +4,9 @@ import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
 import com.agilecheckup.persistency.entity.question.Question;
 import com.agilecheckup.persistency.entity.question.QuestionOption;
+import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.service.QuestionService;
+import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -24,12 +26,15 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   private static final Pattern GET_BY_ASSESSMENT_MATRIX_PATTERN = Pattern.compile("^/questions/matrix/([^/]+)/?$");
   private static final Pattern CUSTOM_QUESTION_PATTERN = Pattern.compile("^/questions/custom/?$");
   private static final Pattern UPDATE_CUSTOM_QUESTION_PATTERN = Pattern.compile("^/questions/([^/]+)/custom/?$");
+  private static final Pattern GET_NEXT_QUESTION_PATTERN = Pattern.compile("^/questions/next/?$");
 
   private final QuestionService questionService;
+  private final AssessmentNavigationService assessmentNavigationService;
   private final ObjectMapper objectMapper;
 
   public QuestionRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     this.questionService = serviceComponent.buildQuestionService();
+    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationService();
     this.objectMapper = objectMapper;
   }
 
@@ -42,6 +47,10 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
       // GET /questions
       if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleGetAll(input);
+      }
+      // GET /questions/next
+      else if (method.equals("GET") && GET_NEXT_QUESTION_PATTERN.matcher(path).matches()) {
+        return handleGetNextQuestion(input.getQueryStringParameters());
       }
       // GET /questions/{id}
       else if (method.equals("GET") && SINGLE_RESOURCE_PATTERN.matcher(path).matches()) {
@@ -246,5 +255,22 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   private String extractIdFromPath(String path) {
     // Extract ID from path like /questions/{id}
     return path.substring(path.lastIndexOf("/") + 1);
+  }
+
+  private APIGatewayProxyResponseEvent handleGetNextQuestion(Map<String, String> queryParams) throws Exception {
+    String employeeAssessmentId = queryParams != null ? queryParams.get("employeeAssessmentId") : null;
+    String tenantId = queryParams != null ? queryParams.get("tenantId") : null;
+    
+    if (employeeAssessmentId == null || tenantId == null) {
+      return ResponseBuilder.buildResponse(400, "Missing required query parameters: employeeAssessmentId, tenantId");
+    }
+    
+    AnswerWithProgressResponse response = assessmentNavigationService.getNextUnansweredQuestion(employeeAssessmentId, tenantId);
+    
+    if (response.getQuestion() == null) {
+      return ResponseBuilder.buildResponse(404, objectMapper.writeValueAsString(response));
+    } else {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
+    }
   }
 }

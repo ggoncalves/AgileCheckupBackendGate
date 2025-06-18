@@ -1,9 +1,7 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.AssessmentMatrix;
-import com.agilecheckup.persistency.entity.Category;
-import com.agilecheckup.persistency.entity.Pillar;
+import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -17,20 +15,12 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.anyMap;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentMatrixRequestHandlerTest {
@@ -45,7 +35,12 @@ class AssessmentMatrixRequestHandlerTest {
   private Context context;
 
   @Captor
+  ArgumentCaptor<AssessmentConfiguration> configurationCaptor;
+
+  @Captor
   ArgumentCaptor<Map<String, Pillar>> pillarMapCaptor;
+  @Mock
+  private com.amazonaws.services.lambda.runtime.LambdaLogger lambdaLogger;
 
 
   private AssessmentMatrixRequestHandler handler;
@@ -54,6 +49,7 @@ class AssessmentMatrixRequestHandlerTest {
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
     doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
+    lenient().doReturn(lambdaLogger).when(context).getLogger();
     handler = new AssessmentMatrixRequestHandler(serviceComponent, objectMapper);
   }
 
@@ -95,11 +91,13 @@ class AssessmentMatrixRequestHandlerTest {
         .description("Competency assessment for engineering roles")
         .tenantId("tenant-test-id-123")
         .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
         .build();
 
     // Set up the service to return the assessment matrix, capture arguments
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
-        anyString(), anyString(), anyString(), anyString(), anyMap());
+        anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When - This will be using our new implementation with manual map building
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -110,7 +108,8 @@ class AssessmentMatrixRequestHandlerTest {
         eq("Competency assessment for engineering roles"),
         eq("tenant-test-id-123"),
         eq("3837551b-20f2-41eb-9779-8203a5209c45"),
-        pillarMapCaptor.capture());
+        pillarMapCaptor.capture(),
+        eq(null));
 
     // Verify the pillar map was built correctly
     Map<String, Pillar> capturedPillarMap = pillarMapCaptor.getValue();
@@ -148,6 +147,8 @@ class AssessmentMatrixRequestHandlerTest {
         .description("For engineering assessments")
         .tenantId(tenantId)
         .performanceCycleId("cycle-1")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
         .build();
 
     AssessmentMatrix matrix2 = AssessmentMatrix.builder()
@@ -156,6 +157,8 @@ class AssessmentMatrixRequestHandlerTest {
         .description("For sales assessments")
         .tenantId(tenantId)
         .performanceCycleId("cycle-2")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
         .build();
 
     List<AssessmentMatrix> matrices = Arrays.asList(matrix1, matrix2);
@@ -188,5 +191,253 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(response.getBody()).isEqualTo("tenantId is required");
     verify(assessmentMatrixService, never()).findAll();
     verify(assessmentMatrixService, never()).findAllByTenantId(anyString());
+  }
+
+  @Test
+  void shouldCreateAssessmentMatrixWithConfiguration() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"Engineering Matrix\",\n" +
+        "  \"description\": \"Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {},\n" +
+        "  \"configuration\": {\n" +
+        "    \"allowQuestionReview\": false,\n" +
+        "    \"requireAllQuestions\": true,\n" +
+        "    \"autoSave\": false,\n" +
+        "    \"navigationMode\": \"SEQUENTIAL\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-matrix-id")
+        .name("Engineering Matrix")
+        .description("Competency assessment for engineering roles")
+        .tenantId("tenant-test-id-123")
+        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    verify(assessmentMatrixService).create(
+        eq("Engineering Matrix"),
+        eq("Competency assessment for engineering roles"),
+        eq("tenant-test-id-123"),
+        eq("3837551b-20f2-41eb-9779-8203a5209c45"),
+        anyMap(),
+        configurationCaptor.capture());
+
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
+    assertThat(capturedConfig.getRequireAllQuestions()).isTrue();
+    assertThat(capturedConfig.getAutoSave()).isFalse();
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.SEQUENTIAL);
+
+    assertThat(response.getStatusCode()).isEqualTo(201);
+  }
+
+  @Test
+  void shouldCreateAssessmentMatrixWithDefaultConfigurationValues() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"Engineering Matrix\",\n" +
+        "  \"description\": \"Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {},\n" +
+        "  \"configuration\": {\n" +
+        "    \"navigationMode\": \"FREE_FORM\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-matrix-id")
+        .name("Engineering Matrix")
+        .description("Competency assessment for engineering roles")
+        .tenantId("tenant-test-id-123")
+        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    verify(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
+
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getAllowQuestionReview()).isTrue(); // default
+    assertThat(capturedConfig.getRequireAllQuestions()).isTrue(); // default
+    assertThat(capturedConfig.getAutoSave()).isTrue(); // default
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.FREE_FORM);
+
+    assertThat(response.getStatusCode()).isEqualTo(201);
+  }
+
+  @Test
+  void shouldCreateAssessmentMatrixWithoutConfiguration() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"Engineering Matrix\",\n" +
+        "  \"description\": \"Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {}\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-matrix-id")
+        .name("Engineering Matrix")
+        .description("Competency assessment for engineering roles")
+        .tenantId("tenant-test-id-123")
+        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    verify(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
+
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig).isNull(); // No configuration provided
+
+    assertThat(response.getStatusCode()).isEqualTo(201);
+  }
+
+  @Test
+  void shouldHandleInvalidNavigationModeGracefully() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"Engineering Matrix\",\n" +
+        "  \"description\": \"Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {},\n" +
+        "  \"configuration\": {\n" +
+        "    \"navigationMode\": \"INVALID_MODE\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-matrix-id")
+        .name("Engineering Matrix")
+        .description("Competency assessment for engineering roles")
+        .tenantId("tenant-test-id-123")
+        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    verify(assessmentMatrixService).create(
+        anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
+
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.RANDOM); // fallback to default
+
+    assertThat(response.getStatusCode()).isEqualTo(201);
+  }
+
+  @Test
+  void shouldUpdateAssessmentMatrixWithConfiguration() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"Updated Engineering Matrix\",\n" +
+        "  \"description\": \"Updated competency assessment\",\n" +
+        "  \"tenantId\": \"tenant-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {},\n" +
+        "  \"configuration\": {\n" +
+        "    \"allowQuestionReview\": true,\n" +
+        "    \"requireAllQuestions\": false,\n" +
+        "    \"autoSave\": true,\n" +
+        "    \"navigationMode\": \"RANDOM\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/matrix-123")
+        .withHttpMethod("PUT")
+        .withBody(requestBody);
+
+    AssessmentMatrix updatedMatrix = AssessmentMatrix.builder()
+        .id("matrix-123")
+        .name("Updated Engineering Matrix")
+        .description("Updated competency assessment")
+        .tenantId("tenant-test-id-123")
+        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
+        .pillarMap(new HashMap<>())
+        .questionCount(0)
+        .build();
+
+    doReturn(Optional.of(updatedMatrix)).when(assessmentMatrixService).update(
+        anyString(), anyString(), anyString(), anyString(), anyString(), anyMap(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    verify(assessmentMatrixService).update(
+        eq("matrix-123"),
+        eq("Updated Engineering Matrix"),
+        eq("Updated competency assessment"),
+        eq("tenant-test-id-123"),
+        eq("3837551b-20f2-41eb-9779-8203a5209c45"),
+        anyMap(),
+        configurationCaptor.capture());
+
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getAllowQuestionReview()).isTrue();
+    assertThat(capturedConfig.getRequireAllQuestions()).isFalse();
+    assertThat(capturedConfig.getAutoSave()).isTrue();
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.RANDOM);
+
+    assertThat(response.getStatusCode()).isEqualTo(200);
   }
 }

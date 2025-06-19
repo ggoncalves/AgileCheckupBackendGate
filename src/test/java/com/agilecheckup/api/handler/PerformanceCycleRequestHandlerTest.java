@@ -426,4 +426,177 @@ class PerformanceCycleRequestHandlerTest {
         assertEquals(405, response.getStatusCode());
         assertEquals("Method Not Allowed", response.getBody());
     }
+
+    @Test
+    void testCreatePerformanceCycleWithISO8601DateTime() {
+        // Test the current parseDate method with ISO 8601 format with milliseconds and timezone
+        String requestBody = "{"
+                + "\"name\":\"Q4 2024\","
+                + "\"description\":\"Fourth quarter review\","
+                + "\"tenantId\":\"tenant1\","
+                + "\"companyId\":\"company1\","
+                + "\"isActive\":true,"
+                + "\"isTimeSensitive\":true,"
+                + "\"startDate\":\"2024-10-01T00:00:00.000Z\","
+                + "\"endDate\":\"2024-12-31T23:59:59.999Z\""
+                + "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/performancecycles")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
+                .id("new-id")
+                .name("Q4 2024")
+                .description("Fourth quarter review")
+                .tenantId("tenant1")
+                .companyId("company1")
+                .isActive(true)
+                .isTimeSensitive(true)
+                .startDate(new Date())
+                .endDate(new Date())
+                .build();
+
+        doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("Q4 2024"),
+                eq("Fourth quarter review"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(true),
+                any(Date.class),
+                any(Date.class)
+        );
+
+        // Execute
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
+
+        // Verify
+        assertEquals(201, response.getStatusCode());
+        verify(mockPerformanceCycleService).create(
+                eq("Q4 2024"),
+                eq("Fourth quarter review"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(true),
+                any(Date.class),
+                any(Date.class)
+        );
+    }
+
+    @Test
+    void testCreatePerformanceCycleWithSimpleDateFormat() {
+        // Test the current parseDate method with simple date format
+        String requestBody = "{"
+                + "\"name\":\"Q1 2025\","
+                + "\"description\":\"First quarter 2025\","
+                + "\"tenantId\":\"tenant1\","
+                + "\"companyId\":\"company1\","
+                + "\"isActive\":true,"
+                + "\"isTimeSensitive\":true,"
+                + "\"startDate\":\"2025-01-01\","
+                + "\"endDate\":\"2025-03-31\""
+                + "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/performancecycles")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
+                .id("new-id")
+                .name("Q1 2025")
+                .description("First quarter 2025")
+                .tenantId("tenant1")
+                .companyId("company1")
+                .isActive(true)
+                .isTimeSensitive(true)
+                .startDate(new Date())
+                .endDate(new Date())
+                .build();
+
+        doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("Q1 2025"),
+                eq("First quarter 2025"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(true),
+                any(Date.class),
+                any(Date.class)
+        );
+
+        // Execute
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
+
+        // Verify
+        assertEquals(201, response.getStatusCode());
+        verify(mockPerformanceCycleService).create(
+                eq("Q1 2025"),
+                eq("First quarter 2025"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(true),
+                any(Date.class),
+                any(Date.class)
+        );
+    }
+
+    @Test
+    void testCreatePerformanceCycleWithNullDates() {
+        // Test the current parseDate method with null dates
+        String requestBody = "{"
+                + "\"name\":\"Open Review\","
+                + "\"description\":\"Open-ended review\","
+                + "\"tenantId\":\"tenant1\","
+                + "\"companyId\":\"company1\","
+                + "\"isActive\":true,"
+                + "\"isTimeSensitive\":false"
+                + "}";
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/performancecycles")
+                .withHttpMethod("POST")
+                .withBody(requestBody);
+
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
+                .id("new-id")
+                .name("Open Review")
+                .description("Open-ended review")
+                .tenantId("tenant1")
+                .companyId("company1")
+                .isActive(true)
+                .isTimeSensitive(false)
+                .build();
+
+        doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("Open Review"),
+                eq("Open-ended review"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(false),
+                isNull(),
+                isNull()
+        );
+
+        // Execute
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, mockContext);
+
+        // Verify
+        assertEquals(201, response.getStatusCode());
+        verify(mockPerformanceCycleService).create(
+                eq("Open Review"),
+                eq("Open-ended review"),
+                eq("tenant1"),
+                eq("company1"),
+                eq(true),
+                eq(false),
+                isNull(),
+                isNull()
+        );
+    }
 }

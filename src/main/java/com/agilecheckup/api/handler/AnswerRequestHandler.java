@@ -3,6 +3,8 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.question.Answer;
 import com.agilecheckup.service.AnswerService;
+import com.agilecheckup.service.AssessmentNavigationService;
+import com.agilecheckup.util.DateTimeUtil;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -19,12 +21,15 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/answers/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/answers/([^/]+)/?$");
   private static final Pattern GET_BY_EMPLOYEE_ASSESSMENT_PATTERN = Pattern.compile("^/answers/employeeassessment/([^/]+)/?$");
+  private static final Pattern SAVE_AND_NEXT_PATTERN = Pattern.compile("^/answers/save-and-next/?$");
 
   private final AnswerService answerService;
+  private final AssessmentNavigationService assessmentNavigationService;
   private final ObjectMapper objectMapper;
 
   public AnswerRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     this.answerService = serviceComponent.buildAnswerService();
+    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationService();
     this.objectMapper = objectMapper;
   }
 
@@ -34,8 +39,16 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
       String path = input.getPath();
       String method = input.getHttpMethod();
 
+      // POST /answers/save-and-next (check this first to avoid matching SINGLE_RESOURCE_PATTERN)
+      if (method.equals("POST") && SAVE_AND_NEXT_PATTERN.matcher(path).matches()) {
+        return handleSaveAndGetNext(input.getBody());
+      }
+      // GET /answers/save-and-next (return method not allowed)
+      else if (method.equals("GET") && SAVE_AND_NEXT_PATTERN.matcher(path).matches()) {
+        return ResponseBuilder.buildResponse(405, "Method Not Allowed");
+      }
       // GET /answers
-      if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
+      else if (method.equals("GET") && GET_ALL_PATTERN.matcher(path).matches()) {
         return handleGetAll();
       }
       // GET /answers/{id}
@@ -101,8 +114,8 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    // Parse the LocalDateTime
-    LocalDateTime answeredAt = LocalDateTime.parse((String) requestMap.get("answeredAt"));
+    // Parse the LocalDateTime using utility class
+    LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
 
     Optional<Answer> answer = answerService.create(
         (String) requestMap.get("employeeAssessmentId"),
@@ -123,8 +136,8 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    // Parse the LocalDateTime
-    LocalDateTime answeredAt = LocalDateTime.parse((String) requestMap.get("answeredAt"));
+    // Parse the LocalDateTime using utility class
+    LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
 
     Optional<Answer> answer = answerService.update(
         id,
@@ -154,6 +167,29 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   private String extractIdFromPath(String path) {
     // Extract ID from path like /answers/{id}
     return path.substring(path.lastIndexOf("/") + 1);
+  }
+
+
+  private APIGatewayProxyResponseEvent handleSaveAndGetNext(String requestBody) throws Exception {
+    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+
+    // Parse the LocalDateTime using utility class
+    LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
+
+    try {
+      com.agilecheckup.service.dto.AnswerWithProgressResponse response = assessmentNavigationService.saveAnswerAndGetNext(
+          (String) requestMap.get("employeeAssessmentId"),
+          (String) requestMap.get("questionId"),
+          answeredAt,
+          (String) requestMap.get("value"),
+          (String) requestMap.get("tenantId"),
+          (String) requestMap.get("notes")
+      );
+
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
+    } catch (RuntimeException e) {
+      return ResponseBuilder.buildResponse(400, "Failed to save answer: " + e.getMessage());
+    }
   }
 
 }

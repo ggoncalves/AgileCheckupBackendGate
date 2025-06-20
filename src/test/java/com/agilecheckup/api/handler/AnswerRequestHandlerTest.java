@@ -3,6 +3,8 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.question.Answer;
 import com.agilecheckup.service.AnswerService;
+import com.agilecheckup.service.AssessmentNavigationService;
+import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -38,6 +40,9 @@ class AnswerRequestHandlerTest {
     private AnswerService answerService;
 
     @Mock
+    private AssessmentNavigationService assessmentNavigationService;
+
+    @Mock
     private Context context;
 
     @Mock
@@ -53,6 +58,7 @@ class AnswerRequestHandlerTest {
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
         lenient().doReturn(answerService).when(serviceComponent).buildAnswerService();
+        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationService();
         lenient().doReturn(lambdaLogger).when(context).getLogger();
         handler = new AnswerRequestHandler(serviceComponent, objectMapper);
     }
@@ -432,5 +438,162 @@ class AnswerRequestHandlerTest {
         verify(lambdaLogger).log("Error in answer endpoint: Database error");
         assertThat(response.getStatusCode()).isEqualTo(500);
         assertThat(response.getBody()).contains("Error processing answer request");
+    }
+
+    @Test
+    void shouldSuccessfullySaveAnswerAndGetNext() throws Exception {
+        // Given
+        String employeeAssessmentId = "ea123";
+        String questionId = "q1";
+        String tenantId = "tenant123";
+        String value = "Yes";
+        String notes = "Test notes";
+        LocalDateTime answeredAt = LocalDateTime.of(2024, 1, 1, 10, 0);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("employeeAssessmentId", employeeAssessmentId);
+        requestBody.put("questionId", questionId);
+        requestBody.put("answeredAt", answeredAt.toString());
+        requestBody.put("value", value);
+        requestBody.put("tenantId", tenantId);
+        requestBody.put("notes", notes);
+
+        AnswerWithProgressResponse mockResponse = AnswerWithProgressResponse.builder()
+                .question(null) // Null indicates assessment completed
+                .existingAnswer(null)
+                .currentProgress(5)
+                .totalQuestions(5)
+                .build();
+
+        when(assessmentNavigationService.saveAnswerAndGetNext(
+                eq(employeeAssessmentId), eq(questionId), eq(answeredAt), 
+                eq(value), eq(tenantId), eq(notes)
+        )).thenReturn(mockResponse);
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/answers/save-and-next")
+                .withHttpMethod("POST")
+                .withBody(objectMapper.writeValueAsString(requestBody));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        
+        AnswerWithProgressResponse responseBody = objectMapper.readValue(
+                response.getBody(), AnswerWithProgressResponse.class);
+        assertThat(responseBody.getCurrentProgress()).isEqualTo(5);
+        assertThat(responseBody.getTotalQuestions()).isEqualTo(5);
+        assertThat(responseBody.getQuestion()).isNull();
+
+        verify(assessmentNavigationService).saveAnswerAndGetNext(
+                eq(employeeAssessmentId), eq(questionId), eq(answeredAt), 
+                eq(value), eq(tenantId), eq(notes)
+        );
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenSaveAnswerAndGetNextFails() throws Exception {
+        // Given
+        String employeeAssessmentId = "ea123";
+        String questionId = "q1";
+        String tenantId = "tenant123";
+        String value = "Yes";
+        String notes = "Test notes";
+        LocalDateTime answeredAt = LocalDateTime.of(2024, 1, 1, 10, 0);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("employeeAssessmentId", employeeAssessmentId);
+        requestBody.put("questionId", questionId);
+        requestBody.put("answeredAt", answeredAt.toString());
+        requestBody.put("value", value);
+        requestBody.put("tenantId", tenantId);
+        requestBody.put("notes", notes);
+
+        when(assessmentNavigationService.saveAnswerAndGetNext(
+                eq(employeeAssessmentId), eq(questionId), eq(answeredAt), 
+                eq(value), eq(tenantId), eq(notes)
+        )).thenThrow(new RuntimeException("Failed to save answer"));
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/answers/save-and-next")
+                .withHttpMethod("POST")
+                .withBody(objectMapper.writeValueAsString(requestBody));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(400);
+        assertThat(response.getBody()).contains("Failed to save answer");
+    }
+
+    @Test
+    void shouldReturnMethodNotAllowedForSaveAndNextWithGetMethod() {
+        // Given
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/answers/save-and-next")
+                .withHttpMethod("GET");
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(405);
+        assertThat(response.getBody()).contains("Method Not Allowed");
+    }
+
+    @Test
+    void shouldHandleISO8601DateTimeWithMillisecondsAndTimezone() throws Exception {
+        // Given - This test reproduces the bug found in CloudWatch logs
+        String employeeAssessmentId = "ea123";
+        String questionId = "q1";
+        String tenantId = "tenant123";
+        String value = "Yes";
+        String notes = "Test notes";
+        // Frontend sends ISO8601 with milliseconds and timezone
+        String answeredAtWithMillisAndTz = "2025-06-19T17:54:27.862Z";
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("employeeAssessmentId", employeeAssessmentId);
+        requestBody.put("questionId", questionId);
+        requestBody.put("answeredAt", answeredAtWithMillisAndTz);
+        requestBody.put("value", value);
+        requestBody.put("tenantId", tenantId);
+        requestBody.put("notes", notes);
+
+        AnswerWithProgressResponse mockResponse = AnswerWithProgressResponse.builder()
+                .question(null)
+                .existingAnswer(null)
+                .currentProgress(1)
+                .totalQuestions(1)
+                .build();
+
+        when(assessmentNavigationService.saveAnswerAndGetNext(
+                eq(employeeAssessmentId), eq(questionId), any(LocalDateTime.class), 
+                eq(value), eq(tenantId), eq(notes)
+        )).thenReturn(mockResponse);
+
+        APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+                .withPath("/answers/save-and-next")
+                .withHttpMethod("POST")
+                .withBody(objectMapper.writeValueAsString(requestBody));
+
+        // When
+        APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(200);
+        
+        AnswerWithProgressResponse responseBody = objectMapper.readValue(
+                response.getBody(), AnswerWithProgressResponse.class);
+        assertThat(responseBody.getCurrentProgress()).isEqualTo(1);
+        assertThat(responseBody.getTotalQuestions()).isEqualTo(1);
+
+        verify(assessmentNavigationService).saveAnswerAndGetNext(
+                eq(employeeAssessmentId), eq(questionId), any(LocalDateTime.class), 
+                eq(value), eq(tenantId), eq(notes)
+        );
     }
 }

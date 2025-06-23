@@ -341,7 +341,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
             .status(es.getAssessmentStatus() != null ? es.getAssessmentStatus().name() : "UNKNOWN")
             .currentScore(es.getCurrentScore())
             .answeredQuestions(es.getAnsweredQuestions())
-            .lastModified(es.getLastModified())
+            .lastActivityDate(es.getLastActivityDate())
             .build())
         .collect(Collectors.toList());
 

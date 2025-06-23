@@ -26,5 +26,5 @@ public class EmployeeAssessmentDetail {
     private String status;
     private Integer answeredQuestions;
     private Double currentScore;
-    private LocalDateTime lastModified;
+    private LocalDateTime lastActivityDate;
 }

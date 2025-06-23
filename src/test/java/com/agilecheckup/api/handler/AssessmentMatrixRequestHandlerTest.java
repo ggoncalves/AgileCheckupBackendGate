@@ -812,7 +812,7 @@ class AssessmentMatrixRequestHandlerTest {
         .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED)
         .currentScore(85.0)
         .answeredQuestions(15)
-        .lastModified(java.time.LocalDateTime.now())
+        .lastActivityDate(java.time.LocalDateTime.now())
         .build());
 
     summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
@@ -823,7 +823,7 @@ class AssessmentMatrixRequestHandlerTest {
         .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
         .currentScore(null)
         .answeredQuestions(8)
-        .lastModified(java.time.LocalDateTime.now().minusHours(2))
+        .lastActivityDate(java.time.LocalDateTime.now().minusHours(2))
         .build());
 
     return summaries;
@@ -843,7 +843,7 @@ class AssessmentMatrixRequestHandlerTest {
               com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
           .currentScore(i % 3 == 0 ? Double.valueOf(70 + (i % 30)) : null)
           .answeredQuestions(i % 20)
-          .lastModified(java.time.LocalDateTime.now().minusHours(i % 24))
+          .lastActivityDate(java.time.LocalDateTime.now().minusHours(i % 24))
           .build());
     }
 

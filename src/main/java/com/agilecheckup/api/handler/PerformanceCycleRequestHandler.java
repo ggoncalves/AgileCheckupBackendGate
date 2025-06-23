@@ -3,12 +3,12 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycle;
 import com.agilecheckup.service.PerformanceCycleService;
+import com.agilecheckup.util.DateTimeUtil;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
@@ -92,8 +92,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Date startDate = parseDate(requestMap.get("startDate"));
-    Date endDate = parseDate(requestMap.get("endDate"));
+    Date startDate = DateTimeUtil.parseDate(requestMap.get("startDate"));
+    Date endDate = DateTimeUtil.parseDate(requestMap.get("endDate"));
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.create(
         (String) requestMap.get("name"),
@@ -116,8 +116,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Date startDate = parseDate(requestMap.get("startDate"));
-    Date endDate = parseDate(requestMap.get("endDate"));
+    Date startDate = DateTimeUtil.parseDate(requestMap.get("startDate"));
+    Date endDate = DateTimeUtil.parseDate(requestMap.get("endDate"));
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.update(
         id,
@@ -154,30 +154,4 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     return path.substring(path.lastIndexOf("/") + 1);
   }
 
-  private Date parseDate(Object dateValue) throws Exception {
-    if (dateValue == null) {
-      return null;
-    }
-    
-    if (dateValue instanceof String) {
-      String dateString = (String) dateValue;
-      if (dateString.isEmpty()) {
-        return null;
-      }
-      // Try ISO 8601 format first (e.g., "2024-01-01T00:00:00.000Z")
-      SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
-      try {
-        return isoFormat.parse(dateString);
-      } catch (Exception e) {
-        // Try simple date format (e.g., "2024-01-01")
-        SimpleDateFormat simpleFormat = new SimpleDateFormat("yyyy-MM-dd");
-        return simpleFormat.parse(dateString);
-      }
-    } else if (dateValue instanceof Long) {
-      // Handle timestamp
-      return new Date((Long) dateValue);
-    }
-    
-    throw new IllegalArgumentException("Invalid date format: " + dateValue);
-  }
 }

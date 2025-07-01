@@ -1,6 +1,11 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
+import com.agilecheckup.gate.cache.CacheManager;
+import com.agilecheckup.gate.dto.DashboardResponse;
+import com.agilecheckup.gate.dto.EmployeeAssessmentDetail;
+import com.agilecheckup.gate.dto.EmployeePageResponse;
+import com.agilecheckup.gate.dto.TeamSummary;
 import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -8,22 +13,31 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrix> {
 
   private static final Pattern UPDATE_POTENTIAL_SCORE_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/potentialscore/?$");
+  private static final Pattern DASHBOARD_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/dashboard/?$");
 
   private final AssessmentMatrixService assessmentMatrixService;
+  private final CacheManager cacheManager;
 
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     super(objectMapper, "assessmentmatrices");
     this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    this.cacheManager = new CacheManager(); // Simple instantiation for now - to be fixed later
   }
-  
+
+  // Constructor for testing with mocked cache manager
+  public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper, CacheManager cacheManager) {
+    super(objectMapper, "assessmentmatrices");
+    this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    this.cacheManager = cacheManager;
+  }
+
   @Override
   protected String getResourceName() {
     return "assessment matrix";
@@ -38,6 +52,13 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       String id = extractIdFromPath(path.replace("/potentialscore", ""));
       return Optional.of(handleUpdatePotentialScore(id, input.getBody()));
     }
+
+    // Handle dashboard endpoint: GET /assessmentmatrices/{id}/dashboard
+    if (method.equals("GET") && DASHBOARD_PATTERN.matcher(path).matches()) {
+      String id = extractIdFromPath(path.replace("/dashboard", ""));
+      return Optional.of(handleGetDashboard(id, input, context));
+    }
+
     return Optional.empty();
   }
 
@@ -231,6 +252,129 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     } else {
       return ResponseBuilder.buildResponse(404, "Assessment matrix not found");
     }
+  }
+
+  /**
+   * Handles GET /assessmentmatrices/{id}/dashboard endpoint.
+   * Returns comprehensive dashboard data with caching and pagination support.
+   */
+  private APIGatewayProxyResponseEvent handleGetDashboard(String matrixId, APIGatewayProxyRequestEvent input, Context context) throws Exception {
+    Map<String, String> queryParams = input.getQueryStringParameters();
+
+    // Extract required tenant ID
+    if (queryParams == null || !queryParams.containsKey("tenantId")) {
+      return ResponseBuilder.buildResponse(400, "tenantId is required");
+    }
+    String tenantId = queryParams.get("tenantId");
+
+    // Extract pagination parameters
+    int page = extractIntParam(queryParams, "page", 1);
+    int pageSize = extractIntParam(queryParams, "pageSize", 50);
+
+    // Validate pagination parameters
+    if (page < 1 || pageSize < 1 || pageSize > 200) {
+      return ResponseBuilder.buildResponse(400, "Invalid pagination parameters. Page must be >= 1, pageSize must be 1-200");
+    }
+
+    // Check cache first (include pagination in cache key)
+    String cacheKey = "dashboard:" + matrixId + ":" + tenantId + ":" + page + ":" + pageSize;
+    Optional<DashboardResponse> cachedResponse = cacheManager.get(cacheKey, DashboardResponse.class);
+
+    if (cachedResponse.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(cachedResponse.get()));
+    }
+
+    // Get dashboard data from service
+    Optional<com.agilecheckup.service.dto.AssessmentDashboardData> dashboardData =
+        assessmentMatrixService.getAssessmentDashboard(matrixId, tenantId);
+
+    if (!dashboardData.isPresent()) {
+      return ResponseBuilder.buildResponse(404, "Assessment matrix not found or access denied");
+    }
+
+    // Convert to presentation DTO with pagination
+    DashboardResponse response = convertToDashboardResponse(dashboardData.get(), page, pageSize);
+
+    // Cache the response
+    cacheManager.put(cacheKey, response);
+
+    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
+  }
+
+  /**
+   * Extracts integer parameter from query string with default value.
+   */
+  private int extractIntParam(Map<String, String> queryParams, String paramName, int defaultValue) {
+    if (queryParams == null || !queryParams.containsKey(paramName)) {
+      return defaultValue;
+    }
+    try {
+      return Integer.parseInt(queryParams.get(paramName));
+    } catch (NumberFormatException e) {
+      return defaultValue;
+    }
+  }
+
+  /**
+   * Converts domain DTO to presentation DTO with pagination support.
+   */
+  private DashboardResponse convertToDashboardResponse(com.agilecheckup.service.dto.AssessmentDashboardData dashboardData, int page, int pageSize) {
+    // Convert team summaries (no pagination needed for teams)
+    List<TeamSummary> teamSummaries = dashboardData.getTeamSummaries().stream()
+        .map(ts -> TeamSummary.builder()
+            .teamId(ts.getTeamId())
+            .teamName(ts.getTeamName())
+            .totalEmployees(ts.getTotalEmployees())
+            .completedAssessments(ts.getCompletedAssessments())
+            .completionPercentage(ts.getCompletionPercentage())
+            .averageScore(ts.getAverageScore())
+            .build())
+        .collect(Collectors.toList());
+
+    // Apply pagination to employee summaries
+    List<EmployeeAssessmentDetail> allEmployeeDetails = dashboardData.getEmployeeSummaries().stream()
+        .map(es -> EmployeeAssessmentDetail.builder()
+            .employeeAssessmentId(es.getEmployeeAssessmentId())
+            .employeeName(es.getEmployeeName())
+            .employeeEmail(es.getEmployeeEmail())
+            .teamId(es.getTeamId())
+            .status(es.getAssessmentStatus() != null ? es.getAssessmentStatus().name() : "UNKNOWN")
+            .currentScore(es.getCurrentScore())
+            .answeredQuestions(es.getAnsweredQuestions())
+            .lastActivityDate(es.getLastActivityDate())
+            .build())
+        .collect(Collectors.toList());
+
+    // Apply pagination
+    int totalEmployees = allEmployeeDetails.size();
+    int startIndex = (page - 1) * pageSize;
+    int endIndex = Math.min(startIndex + pageSize, totalEmployees);
+
+    List<EmployeeAssessmentDetail> paginatedEmployeeDetails = startIndex < totalEmployees
+        ? allEmployeeDetails.subList(startIndex, endIndex)
+        : new ArrayList<>();
+
+    return DashboardResponse.builder()
+        .matrixId(dashboardData.getAssessmentMatrixId())
+        .matrixName(dashboardData.getMatrixName())
+        .potentialScore(dashboardData.getPotentialScore())
+        .teamSummaries(teamSummaries)
+        .employees(EmployeePageResponse.builder()
+            .content(paginatedEmployeeDetails)
+            .totalCount(totalEmployees)
+            .page(page)
+            .pageSize(pageSize)
+            .build())
+        .totalEmployees(dashboardData.getTotalEmployees())
+        .completedAssessments(dashboardData.getCompletedAssessments())
+        .build();
+  }
+
+  /**
+   * Backward compatibility method for tests.
+   */
+  private DashboardResponse convertToDashboardResponse(com.agilecheckup.service.dto.AssessmentDashboardData dashboardData) {
+    return convertToDashboardResponse(dashboardData, 1, 50);
   }
 
 }

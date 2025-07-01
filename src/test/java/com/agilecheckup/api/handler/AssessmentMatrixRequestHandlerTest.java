@@ -1,12 +1,14 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
+import com.agilecheckup.gate.cache.CacheManager;
 import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +34,9 @@ class AssessmentMatrixRequestHandlerTest {
   private AssessmentMatrixService assessmentMatrixService;
 
   @Mock
+  private CacheManager cacheManager;
+
+  @Mock
   private Context context;
 
   @Captor
@@ -48,9 +53,14 @@ class AssessmentMatrixRequestHandlerTest {
   @BeforeEach
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
     doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
     lenient().doReturn(lambdaLogger).when(context).getLogger();
-    handler = new AssessmentMatrixRequestHandler(serviceComponent, objectMapper);
+
+    // Mock cache manager to always return empty (no cache hits)
+    lenient().doReturn(Optional.empty()).when(cacheManager).get(anyString(), any(Class.class));
+
+    handler = new AssessmentMatrixRequestHandler(serviceComponent, objectMapper, cacheManager);
   }
 
   @Test
@@ -439,5 +449,411 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.RANDOM);
 
     assertThat(response.getStatusCode()).isEqualTo(200);
+  }
+
+  @Test
+  void handleGetDashboard_whenValidRequest_shouldReturnDashboard() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
+        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
+            .assessmentMatrixId(matrixId)
+            .matrixName("Test Matrix")
+            .teamSummaries(new ArrayList<>())
+            .employeeSummaries(new ArrayList<>())
+            .totalEmployees(5)
+            .completedAssessments(3)
+            .build();
+
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    assertThat(response.getBody()).contains("\"matrixId\":\"" + matrixId + "\"");
+    assertThat(response.getBody()).contains("\"matrixName\":\"Test Matrix\"");
+    assertThat(response.getBody()).contains("\"totalEmployees\":5");
+    assertThat(response.getBody()).contains("\"completedAssessments\":3");
+
+    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+  }
+
+  @Test
+  void handleGetDashboard_whenNoTenantId_shouldReturnBadRequest() {
+    // Given
+    String matrixId = "matrix-123";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET");
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(400);
+    assertThat(response.getBody()).isEqualTo("tenantId is required");
+  }
+
+  @Test
+  void handleGetDashboard_whenMatrixNotFound_shouldReturnNotFound() {
+    // Given
+    String matrixId = "nonexistent-matrix";
+    String tenantId = "tenant-456";
+
+    doReturn(Optional.empty()).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(404);
+    assertThat(response.getBody()).isEqualTo("Assessment matrix not found or access denied");
+
+    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+  }
+
+  @Test
+  void handleGetDashboard_withPaginationParameters_shouldReturnPaginatedResults() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    // Create larger dataset for pagination testing
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> employeeSummaries = createLargeEmployeeSummaryList(10);
+
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
+        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
+            .assessmentMatrixId(matrixId)
+            .matrixName("Test Matrix")
+            .teamSummaries(createTestTeamSummaries())
+            .employeeSummaries(employeeSummaries)
+            .totalEmployees(10)
+            .completedAssessments(6)
+            .build();
+
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("tenantId", tenantId);
+    queryParams.put("page", "2");
+    queryParams.put("pageSize", "3");
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(queryParams);
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    String responseBody = response.getBody();
+
+    // Verify pagination in response
+    assertThat(responseBody).contains("\"page\":2");
+    assertThat(responseBody).contains("\"pageSize\":3");
+    assertThat(responseBody).contains("\"totalCount\":10");
+
+    // Verify team summaries are included
+    assertThat(responseBody).contains("\"teamSummaries\":");
+
+    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+  }
+
+  @Test
+  void handleGetDashboard_withInvalidPaginationParameters_shouldReturnBadRequest() {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("tenantId", tenantId);
+    queryParams.put("page", "0"); // Invalid: page must be >= 1
+    queryParams.put("pageSize", "300"); // Invalid: pageSize must be <= 200
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(queryParams);
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(400);
+    assertThat(response.getBody()).contains("Invalid pagination parameters");
+  }
+
+  @Test
+  void handleGetDashboard_withNonNumericPaginationParameters_shouldUseDefaults() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
+        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
+            .assessmentMatrixId(matrixId)
+            .matrixName("Test Matrix")
+            .teamSummaries(new ArrayList<>())
+            .employeeSummaries(new ArrayList<>())
+            .totalEmployees(5)
+            .completedAssessments(3)
+            .build();
+
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("tenantId", tenantId);
+    queryParams.put("page", "invalid"); // Non-numeric
+    queryParams.put("pageSize", "also-invalid"); // Non-numeric
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(queryParams);
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    String responseBody = response.getBody();
+
+    // Should use default values: page=1, pageSize=50
+    assertThat(responseBody).contains("\"page\":1");
+    assertThat(responseBody).contains("\"pageSize\":50");
+  }
+
+  @Test
+  void handleGetDashboard_withComplexDashboardData_shouldReturnCompleteResponse() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    // Create consistent employee data with 10 employees
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> employeeSummaries = createLargeEmployeeSummaryList(10);
+
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
+        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
+            .assessmentMatrixId(matrixId)
+            .matrixName("Complex Test Matrix")
+            .potentialScore(createTestPotentialScore())
+            .teamSummaries(createTestTeamSummaries())
+            .employeeSummaries(employeeSummaries)
+            .totalEmployees(10)
+            .completedAssessments(6)
+            .build();
+
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    String responseBody = response.getBody();
+
+    // Verify all major components are present
+    assertThat(responseBody).contains("\"matrixId\":\"" + matrixId + "\"");
+    assertThat(responseBody).contains("\"matrixName\":\"Complex Test Matrix\"");
+    assertThat(responseBody).contains("\"potentialScore\":");
+    assertThat(responseBody).contains("\"teamSummaries\":");
+    assertThat(responseBody).contains("\"employees\":");
+    assertThat(responseBody).contains("\"totalEmployees\":10");
+    assertThat(responseBody).contains("\"completedAssessments\":6");
+
+    // Verify team summary structure
+    assertThat(responseBody).contains("\"teamId\":\"team-1\"");
+    assertThat(responseBody).contains("\"teamName\":\"Engineering Team\"");
+    assertThat(responseBody).contains("\"completionPercentage\":");
+    assertThat(responseBody).contains("\"averageScore\":");
+
+    // Verify employee details structure
+    assertThat(responseBody).contains("\"employeeAssessmentId\":");
+    assertThat(responseBody).contains("\"employeeName\":");
+    assertThat(responseBody).contains("\"status\":");
+
+    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+  }
+
+  @Test
+  void handleGetDashboard_withLargeDataset_shouldPaginateCorrectly() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    // Create large dataset
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> largeEmployeeList =
+        createLargeEmployeeSummaryList(150); // 150 employees
+
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
+        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
+            .assessmentMatrixId(matrixId)
+            .matrixName("Large Matrix")
+            .teamSummaries(createTestTeamSummaries())
+            .employeeSummaries(largeEmployeeList)
+            .totalEmployees(150)
+            .completedAssessments(100)
+            .build();
+
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+        .getAssessmentDashboard(matrixId, tenantId);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("tenantId", tenantId);
+    queryParams.put("page", "3");
+    queryParams.put("pageSize", "50");
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(queryParams);
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(200);
+    String responseBody = response.getBody();
+
+    // Verify pagination
+    assertThat(responseBody).contains("\"page\":3");
+    assertThat(responseBody).contains("\"pageSize\":50");
+    assertThat(responseBody).contains("\"totalCount\":150");
+
+    // Verify content length is appropriate for page 3 (should contain 50 employees)
+    assertThat(responseBody).contains("\"content\":");
+
+    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+  }
+
+  @Test
+  void handleGetDashboard_withServiceException_shouldReturnInternalServerError() throws Exception {
+    // Given
+    String matrixId = "matrix-123";
+    String tenantId = "tenant-456";
+
+    doThrow(new RuntimeException("Database connection failed"))
+        .when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
+        .withHttpMethod("GET")
+        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    assertThat(response.getStatusCode()).isEqualTo(500);
+    assertThat(response.getBody()).contains("Error");
+  }
+
+  // ========== Helper Methods for Dashboard Tests ==========
+
+  private List<com.agilecheckup.service.dto.TeamAssessmentSummary> createTestTeamSummaries() {
+    List<com.agilecheckup.service.dto.TeamAssessmentSummary> summaries = new ArrayList<>();
+
+    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder()
+        .teamId("team-1")
+        .teamName("Engineering Team")
+        .totalEmployees(5)
+        .completedAssessments(3)
+        .completionPercentage(60.0)
+        .averageScore(85.5)
+        .build());
+
+    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder()
+        .teamId("team-2")
+        .teamName("Design Team")
+        .totalEmployees(3)
+        .completedAssessments(2)
+        .completionPercentage(66.67)
+        .averageScore(78.0)
+        .build());
+
+    return summaries;
+  }
+
+  private List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> createTestEmployeeSummaries() {
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> summaries = new ArrayList<>();
+
+    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
+        .employeeAssessmentId("assessment-1")
+        .employeeName("John Doe")
+        .employeeEmail("john@example.com")
+        .teamId("team-1")
+        .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED)
+        .currentScore(85.0)
+        .answeredQuestions(15)
+        .lastActivityDate(java.time.LocalDateTime.now())
+        .build());
+
+    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
+        .employeeAssessmentId("assessment-2")
+        .employeeName("Jane Smith")
+        .employeeEmail("jane@example.com")
+        .teamId("team-1")
+        .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
+        .currentScore(null)
+        .answeredQuestions(8)
+        .lastActivityDate(java.time.LocalDateTime.now().minusHours(2))
+        .build());
+
+    return summaries;
+  }
+
+  private List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> createLargeEmployeeSummaryList(int count) {
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> summaries = new ArrayList<>();
+
+    for (int i = 1; i <= count; i++) {
+      summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
+          .employeeAssessmentId("assessment-" + i)
+          .employeeName("Employee " + i)
+          .employeeEmail("employee" + i + "@example.com")
+          .teamId("team-" + ((i % 5) + 1))
+          .assessmentStatus(i % 3 == 0 ?
+              com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED :
+              com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
+          .currentScore(i % 3 == 0 ? Double.valueOf(70 + (i % 30)) : null)
+          .answeredQuestions(i % 20)
+          .lastActivityDate(java.time.LocalDateTime.now().minusHours(i % 24))
+          .build());
+    }
+
+    return summaries;
+  }
+
+  private com.agilecheckup.persistency.entity.score.PotentialScore createTestPotentialScore() {
+    return com.agilecheckup.persistency.entity.score.PotentialScore.builder()
+        .score(100.0)
+        .pillarIdToPillarScoreMap(new HashMap<>())
+        .build();
   }
 }

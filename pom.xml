@@ -98,6 +98,13 @@
             <version>3.12.0</version>
         </dependency>
 
+        <!-- Caffeine Cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>2.9.3</version>
+        </dependency>
+
         <!-- JWT dependencies - explicit for Lambda deployment -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

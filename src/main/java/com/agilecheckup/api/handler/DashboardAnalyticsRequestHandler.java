@@ -4,6 +4,7 @@ import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.dto.DashboardAnalyticsOverviewResponse;
 import com.agilecheckup.gate.dto.DashboardAnalyticsTeamResponse;
 import com.agilecheckup.gate.dto.PerformanceCycleSummaryResponse;
+import com.agilecheckup.persistency.entity.AnalyticsScope;
 import com.agilecheckup.persistency.entity.AssessmentMatrix;
 import com.agilecheckup.persistency.entity.DashboardAnalytics;
 import com.agilecheckup.service.AssessmentMatrixService;
@@ -14,11 +15,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -310,9 +307,9 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                     .completionPercentage(overview.getCompletionPercentage())
                     .build();
 
-            // Build team overviews (exclude overview record)
+            // Build team overviews (only include TEAM scope records)
             List<DashboardAnalyticsOverviewResponse.TeamOverview> teams = allAnalytics.stream()
-                    .filter(analytics -> !"OVERVIEW".equals(analytics.getTeamId()))
+                    .filter(analytics -> AnalyticsScope.TEAM.equals(analytics.getScope()))
                     .map(this::buildTeamOverview)
                     .collect(Collectors.toList());
 

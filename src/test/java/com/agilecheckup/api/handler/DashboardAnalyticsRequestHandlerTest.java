@@ -1,6 +1,7 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
+import com.agilecheckup.persistency.entity.AnalyticsScope;
 import com.agilecheckup.persistency.entity.AssessmentMatrix;
 import com.agilecheckup.persistency.entity.DashboardAnalytics;
 import com.agilecheckup.service.AssessmentMatrixService;
@@ -497,7 +498,7 @@ class DashboardAnalyticsRequestHandlerTest {
         when(dashboardAnalyticsService.getOverview(ASSESSMENT_MATRIX_ID))
                 .thenReturn(Optional.of(mockAnalytics));
         when(dashboardAnalyticsService.getAllAnalytics(ASSESSMENT_MATRIX_ID))
-                .thenReturn(Arrays.asList(mockAnalytics));
+                .thenReturn(List.of(mockAnalytics));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -543,7 +544,7 @@ class DashboardAnalyticsRequestHandlerTest {
         when(dashboardAnalyticsService.getOverview(ASSESSMENT_MATRIX_ID))
                 .thenReturn(Optional.of(mockAnalytics));
         when(dashboardAnalyticsService.getAllAnalytics(ASSESSMENT_MATRIX_ID))
-                .thenReturn(Arrays.asList(mockAnalytics));
+                .thenReturn(List.of(mockAnalytics));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -574,7 +575,7 @@ class DashboardAnalyticsRequestHandlerTest {
         when(dashboardAnalyticsService.getOverview(ASSESSMENT_MATRIX_ID))
                 .thenReturn(Optional.of(mockAnalytics));
         when(dashboardAnalyticsService.getAllAnalytics(ASSESSMENT_MATRIX_ID))
-                .thenReturn(Arrays.asList(mockAnalytics));
+                .thenReturn(List.of(mockAnalytics));
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -622,10 +623,11 @@ class DashboardAnalyticsRequestHandlerTest {
     private DashboardAnalytics createMockDashboardAnalytics() {
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#" + TEAM_ID)
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#TEAM#" + TEAM_ID)
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
+                .scope(AnalyticsScope.TEAM)
                 .teamId(TEAM_ID)
                 .teamName("Test Team")
                 .companyName("Test Company")
@@ -671,11 +673,12 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#OVERVIEW")
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#ASSESSMENT_MATRIX")
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
-                .teamId("OVERVIEW")
+                .scope(AnalyticsScope.ASSESSMENT_MATRIX)
+                .teamId(null)
                 .teamName("Overview")
                 .companyName("Test Company")
                 .performanceCycleName("Q4 2024 Assessment")
@@ -708,11 +711,12 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#OVERVIEW")
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#ASSESSMENT_MATRIX")
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
-                .teamId("OVERVIEW")
+                .scope(AnalyticsScope.ASSESSMENT_MATRIX)
+                .teamId(null)
                 .teamName("Overview")
                 .companyName("Test Company")
                 .performanceCycleName("Q4 2024 Assessment")
@@ -757,10 +761,11 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#" + TEAM_ID)
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#TEAM#" + TEAM_ID)
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
+                .scope(AnalyticsScope.TEAM)
                 .teamId(TEAM_ID)
                 .teamName("Test Team")
                 .companyName("Test Company")
@@ -779,10 +784,11 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#" + TEAM_ID)
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#TEAM#" + TEAM_ID)
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
+                .scope(AnalyticsScope.TEAM)
                 .teamId(TEAM_ID)
                 .teamName("Test Team")
                 .companyName("Test Company")
@@ -801,10 +807,11 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#" + TEAM_ID)
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#TEAM#" + TEAM_ID)
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
+                .scope(AnalyticsScope.TEAM)
                 .teamId(TEAM_ID)
                 .teamName("Test Team")
                 .companyName("Test Company")
@@ -839,10 +846,11 @@ class DashboardAnalyticsRequestHandlerTest {
         
         return DashboardAnalytics.builder()
                 .companyPerformanceCycleId(COMPANY_ID + "#cycle456")
-                .assessmentMatrixTeamId(ASSESSMENT_MATRIX_ID + "#" + TEAM_ID)
+                .assessmentMatrixScopeId(ASSESSMENT_MATRIX_ID + "#TEAM#" + TEAM_ID)
                 .companyId(COMPANY_ID)
                 .performanceCycleId("cycle456")
                 .assessmentMatrixId(ASSESSMENT_MATRIX_ID)
+                .scope(AnalyticsScope.TEAM)
                 .teamId(TEAM_ID)
                 .teamName("Test Team")
                 .companyName("Test Company")

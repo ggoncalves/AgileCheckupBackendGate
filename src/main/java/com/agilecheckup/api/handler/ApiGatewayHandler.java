@@ -22,6 +22,7 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private final Map<String, RequestHandlerStrategy> routeHandlers;
   private final InvitationRequestHandler invitationHandler;
+  private final DashboardAnalyticsRequestHandler dashboardAnalyticsHandler;
 
   public ApiGatewayHandler() {
     // Initialize your Dagger component
@@ -46,9 +47,11 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
     this.routeHandlers.put("questions", new QuestionRequestHandler(serviceComponent, objectMapper));
     this.routeHandlers.put("answers", new AnswerRequestHandler(serviceComponent, objectMapper));
     this.routeHandlers.put("employeeassessments", new EmployeeAssessmentRequestHandler(serviceComponent, objectMapper));
+    this.routeHandlers.put("dashboard-analytics", new DashboardAnalyticsRequestHandler(serviceComponent, objectMapper));
     
     // Initialize special handlers
     this.invitationHandler = new InvitationRequestHandler(serviceComponent, objectMapper);
+    this.dashboardAnalyticsHandler = new DashboardAnalyticsRequestHandler(serviceComponent, objectMapper);
   }
 
   @Override
@@ -74,6 +77,11 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
       // Check for invitation endpoints first
       if (path.contains("/generate-invitation-token") || path.startsWith("/invitation/")) {
         return invitationHandler.handleRequest(input, context);
+      }
+
+      // Check for performance cycle summary endpoints
+      if (path.startsWith("/performance-cycle-summary/")) {
+        return dashboardAnalyticsHandler.handleRequest(input, context);
       }
 
       // Delegate to the appropriate handler based on resource type

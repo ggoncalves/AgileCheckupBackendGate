@@ -1,6 +1,6 @@
 package com.agilecheckup.api.model;
 
-import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.persistency.entity.Team;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,9 +20,9 @@ public class TeamResponse {
     private String tenantId;
     private String name;
     private String description;
-    private Department department;
+    private DepartmentV2 department;
     
-    public static TeamResponse fromTeam(Team team, Department department) {
+    public static TeamResponse fromTeam(Team team, DepartmentV2 department) {
         return TeamResponse.builder()
                 .id(team.getId())
                 .createdDate(team.getCreatedDate())

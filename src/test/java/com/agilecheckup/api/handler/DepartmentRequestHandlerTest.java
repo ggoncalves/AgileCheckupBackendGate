@@ -343,7 +343,7 @@ class DepartmentRequestHandlerTest {
 
         // Then
         verify(departmentService).findById(departmentId);
-        verify(departmentService).delete(department);
+        verify(departmentService).deleteById(departmentId);
         assertThat(response.getStatusCode()).isEqualTo(204);
         assertThat(response.getBody()).isEmpty();
     }
@@ -363,7 +363,7 @@ class DepartmentRequestHandlerTest {
 
         // Then
         verify(departmentService).findById(departmentId);
-        verify(departmentService, never()).delete(any());
+        verify(departmentService, never()).deleteById(anyString());
         assertThat(response.getStatusCode()).isEqualTo(404);
         assertThat(response.getBody()).contains("Department not found");
     }

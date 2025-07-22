@@ -2,7 +2,7 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.api.model.TeamResponse;
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.persistency.entity.Team;
 import com.agilecheckup.service.DepartmentService;
 import com.agilecheckup.service.TeamService;
@@ -162,7 +162,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   }
   
   private TeamResponse enrichTeamWithDepartment(Team team) {
-    Optional<Department> department = departmentService.findById(team.getDepartmentId());
+    Optional<DepartmentV2> department = departmentService.findById(team.getDepartmentId());
     return TeamResponse.fromTeam(team, department.orElse(null));
   }
   

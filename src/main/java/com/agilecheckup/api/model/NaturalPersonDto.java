@@ -1,7 +1,5 @@
 package com.agilecheckup.api.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,7 +24,5 @@ public class NaturalPersonDto {
     private AddressDto address;
     private Date createdDate;
     
-    @JsonProperty("lastModifiedDate")
-    @JsonAlias({"lastUpdatedDate", "lastModifiedDate"})
-    private Date lastModifiedDate;
+    private Date lastUpdatedDate;
 }

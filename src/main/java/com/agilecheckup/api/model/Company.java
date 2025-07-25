@@ -1,7 +1,5 @@
 package com.agilecheckup.api.model;
 
-import com.agilecheckup.persistency.entity.person.Address;
-import com.agilecheckup.persistency.entity.person.NaturalPerson;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -31,7 +29,7 @@ public class Company {
 
   private String phone;
 
-  private NaturalPerson contactPerson;
+  private NaturalPersonDto contactPerson;
 
-  private Address address;
+  private AddressDto address;
 }

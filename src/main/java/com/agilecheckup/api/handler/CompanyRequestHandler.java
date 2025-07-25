@@ -3,9 +3,14 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.api.validator.CompanyValidator;
 import com.agilecheckup.api.validator.ValidationResult;
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Company;
+import com.agilecheckup.persistency.entity.CompanyV2;
 import com.agilecheckup.persistency.entity.CompanySize;
 import com.agilecheckup.persistency.entity.Industry;
+import com.agilecheckup.persistency.entity.person.AddressV2;
+import com.agilecheckup.persistency.entity.person.Gender;
+import com.agilecheckup.persistency.entity.person.GenderPronoun;
+import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
+import com.agilecheckup.persistency.entity.person.PersonDocumentType;
 import com.agilecheckup.service.CompanyService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -77,7 +82,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<Company> company = companyService.findById(id);
+    Optional<CompanyV2> company = companyService.findById(id);
 
     if (company.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(company.get()));
@@ -98,7 +103,11 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     CompanySize size = parseCompanySize(companyBody.getSize());
     Industry industry = parseIndustry(companyBody.getIndustry());
 
-    Optional<Company> company = companyService.create(
+    // Convert API DTOs to V2 entities
+    NaturalPersonV2 contactPersonV2 = convertDtoToNaturalPersonV2(companyBody.getContactPerson());
+    AddressV2 addressV2 = convertDtoToAddressV2(companyBody.getAddress());
+
+    Optional<CompanyV2> company = companyService.create(
         companyBody.getDocumentNumber(),
         companyBody.getName(),
         companyBody.getEmail(),
@@ -108,8 +117,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         industry,
         companyBody.getWebsite(),
         companyBody.getLegalName(),
-        companyBody.getContactPerson(),
-        companyBody.getAddress()
+        contactPersonV2,
+        addressV2
     );
 
     if (company.isPresent()) {
@@ -131,8 +140,12 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     CompanySize size = parseCompanySize(companyBody.getSize());
     Industry industry = parseIndustry(companyBody.getIndustry());
 
+    // Convert API DTOs to V2 entities
+    NaturalPersonV2 contactPersonV2 = convertDtoToNaturalPersonV2(companyBody.getContactPerson());
+    AddressV2 addressV2 = convertDtoToAddressV2(companyBody.getAddress());
+
     // Use update method
-    Optional<Company> company = companyService.update(
+    Optional<CompanyV2> company = companyService.update(
         id,
         companyBody.getDocumentNumber(),
         companyBody.getName(),
@@ -143,8 +156,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         industry,
         companyBody.getWebsite(),
         companyBody.getLegalName(),
-        companyBody.getContactPerson(),
-        companyBody.getAddress()
+        contactPersonV2,
+        addressV2
     );
 
     if (company.isPresent()) {
@@ -159,10 +172,10 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<Company> company = companyService.findById(id);
+    Optional<CompanyV2> company = companyService.findById(id);
 
     if (company.isPresent()) {
-      companyService.delete(company.get());
+      companyService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Company not found");
@@ -196,5 +209,66 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
       throw new IllegalArgumentException("Invalid industry: " + industryStr +
           ". Valid values are: TECHNOLOGY, FINANCE, HEALTHCARE, MANUFACTURING, RETAIL, EDUCATION, CONSULTING, GOVERNMENT, NONPROFIT, OTHER");
     }
+  }
+
+  private NaturalPersonV2 convertDtoToNaturalPersonV2(com.agilecheckup.api.model.NaturalPersonDto dto) {
+    if (dto == null) {
+      return null;
+    }
+    
+    // Parse enums from string
+    PersonDocumentType docType = null;
+    if (dto.getPersonDocumentType() != null && !dto.getPersonDocumentType().trim().isEmpty()) {
+      try {
+        docType = PersonDocumentType.valueOf(dto.getPersonDocumentType());
+      } catch (IllegalArgumentException e) {
+        // Log warning but continue
+      }
+    }
+    
+    Gender gender = null;
+    if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
+      try {
+        gender = Gender.valueOf(dto.getGender());
+      } catch (IllegalArgumentException e) {
+        // Log warning but continue
+      }
+    }
+    
+    GenderPronoun genderPronoun = null;
+    if (dto.getGenderPronoun() != null && !dto.getGenderPronoun().trim().isEmpty()) {
+      try {
+        genderPronoun = GenderPronoun.valueOf(dto.getGenderPronoun());
+      } catch (IllegalArgumentException e) {
+        // Log warning but continue
+      }
+    }
+    
+    return NaturalPersonV2.builder()
+        .id(dto.getId())
+        .name(dto.getName())
+        .email(dto.getEmail())
+        .phone(dto.getPhone())
+        .documentNumber(dto.getDocumentNumber())
+        .personDocumentType(docType)
+        .aliasName(dto.getAliasName())
+        .gender(gender)
+        .genderPronoun(genderPronoun)
+        .address(convertDtoToAddressV2(dto.getAddress()))
+        .build();
+  }
+
+  private AddressV2 convertDtoToAddressV2(com.agilecheckup.api.model.AddressDto dto) {
+    if (dto == null) {
+      return null;
+    }
+    return AddressV2.builder()
+        .id(dto.getId())
+        .street(dto.getStreet())
+        .city(dto.getCity())
+        .state(dto.getState())
+        .country(dto.getCountry())
+        .zipcode(dto.getZipcode())
+        .build();
   }
 }

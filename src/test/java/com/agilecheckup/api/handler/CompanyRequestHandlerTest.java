@@ -1,11 +1,11 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Company;
+import com.agilecheckup.persistency.entity.CompanyV2;
 import com.agilecheckup.persistency.entity.CompanySize;
 import com.agilecheckup.persistency.entity.Industry;
-import com.agilecheckup.persistency.entity.person.Address;
-import com.agilecheckup.persistency.entity.person.NaturalPerson;
+import com.agilecheckup.persistency.entity.person.AddressV2;
+import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
 import com.agilecheckup.service.CompanyService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -77,7 +77,7 @@ class CompanyRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    Company createdCompany = Company.builder()
+    CompanyV2 createdCompany = CompanyV2.builder()
         .id("new-company-id")
         .documentNumber("12345678000123")
         .name("Tech Company Inc.")
@@ -151,7 +151,7 @@ class CompanyRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    Company createdCompany = Company.builder()
+    CompanyV2 createdCompany = CompanyV2.builder()
         .id("full-company-id")
         .documentNumber("98765432000198")
         .name("Full Company Ltd.")
@@ -164,13 +164,13 @@ class CompanyRequestHandlerTest {
         .legalName("Full Company Legal Ltd.")
         .build();
 
-    ArgumentCaptor<NaturalPerson> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPerson.class);
-    ArgumentCaptor<Address> addressCaptor = ArgumentCaptor.forClass(Address.class);
+    ArgumentCaptor<NaturalPersonV2> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPersonV2.class);
+    ArgumentCaptor<AddressV2> addressCaptor = ArgumentCaptor.forClass(AddressV2.class);
 
     doReturn(Optional.of(createdCompany)).when(companyService).create(
         anyString(), anyString(), anyString(), anyString(), anyString(),
         any(CompanySize.class), any(Industry.class), anyString(), anyString(),
-        any(NaturalPerson.class), any(Address.class));
+        any(NaturalPersonV2.class), any(AddressV2.class));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -191,12 +191,12 @@ class CompanyRequestHandlerTest {
     );
 
     // Verify contact person was parsed correctly
-    NaturalPerson capturedContactPerson = contactPersonCaptor.getValue();
+    NaturalPersonV2 capturedContactPerson = contactPersonCaptor.getValue();
     assertThat(capturedContactPerson.getName()).isEqualTo("John Doe");
     assertThat(capturedContactPerson.getEmail()).isEqualTo("john.doe@fullcompany.com");
 
     // Verify address was parsed correctly
-    Address capturedAddress = addressCaptor.getValue();
+    AddressV2 capturedAddress = addressCaptor.getValue();
     assertThat(capturedAddress.getStreet()).isEqualTo("123 Business Ave");
     assertThat(capturedAddress.getCity()).isEqualTo("São Paulo");
     assertThat(capturedAddress.getState()).isEqualTo("SP");
@@ -319,10 +319,10 @@ class CompanyRequestHandlerTest {
         .withPath("/companies/" + companyId)
         .withBody(requestBody);
 
-    Company existingCompany = new Company();
+    CompanyV2 existingCompany = new CompanyV2();
     existingCompany.setId(companyId);
 
-    Company updatedCompany = new Company();
+    CompanyV2 updatedCompany = new CompanyV2();
     updatedCompany.setId(companyId);
     updatedCompany.setDocumentNumber("11111111000111");
     updatedCompany.setName("Updated Company");
@@ -336,7 +336,7 @@ class CompanyRequestHandlerTest {
     updatedCompany.setPhone("1234567890");
 
     // Set up Address
-    Address address = new Address();
+    AddressV2 address = new AddressV2();
     address.setStreet("123 Main St");
     address.setCity("New York");
     address.setState("NY");
@@ -345,7 +345,7 @@ class CompanyRequestHandlerTest {
     updatedCompany.setAddress(address);
 
     // Set up NaturalPerson
-    NaturalPerson contactPerson = new NaturalPerson();
+    NaturalPersonV2 contactPerson = new NaturalPersonV2();
     contactPerson.setId("person-123");
     contactPerson.setName("John");
 //    contactPerson.setLastName("Doe");
@@ -365,8 +365,8 @@ class CompanyRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(200);
 
     // Capture the argument passed to update method
-    ArgumentCaptor<NaturalPerson> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPerson.class);
-    ArgumentCaptor<Address> addressCaptor = ArgumentCaptor.forClass(Address.class);
+    ArgumentCaptor<NaturalPersonV2> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPersonV2.class);
+    ArgumentCaptor<AddressV2> addressCaptor = ArgumentCaptor.forClass(AddressV2.class);
 
     verify(companyService).update(
         eq(companyId),
@@ -384,7 +384,7 @@ class CompanyRequestHandlerTest {
     );
 
     // Verify Address fields
-    Address capturedAddress = addressCaptor.getValue();
+    AddressV2 capturedAddress = addressCaptor.getValue();
     assertThat(capturedAddress).isNotNull();
     assertThat(capturedAddress.getStreet()).isEqualTo("123 Main St");
     assertThat(capturedAddress.getCity()).isEqualTo("New York");
@@ -393,7 +393,7 @@ class CompanyRequestHandlerTest {
     assertThat(capturedAddress.getCountry()).isEqualTo("USA");
 
     // Verify ContactPerson fields
-    NaturalPerson capturedContactPerson = contactPersonCaptor.getValue();
+    NaturalPersonV2 capturedContactPerson = contactPersonCaptor.getValue();
     assertThat(capturedContactPerson).isNotNull();
     assertThat(capturedContactPerson.getId()).isEqualTo("person-123");
     assertThat(capturedContactPerson.getName()).isEqualTo("John");
@@ -422,7 +422,7 @@ class CompanyRequestHandlerTest {
         .withHttpMethod("PUT")
         .withBody(requestBody);
 
-    Company updatedCompany = Company.builder()
+    CompanyV2 updatedCompany = CompanyV2.builder()
         .id(companyId)
         .documentNumber("11111111000111")
         .name("Updated Company")
@@ -530,7 +530,7 @@ class CompanyRequestHandlerTest {
         .withHttpMethod("PUT")
         .withBody(requestBody);
 
-    Company updatedCompany = Company.builder()
+    CompanyV2 updatedCompany = CompanyV2.builder()
         .id(companyId)
         .name("New Company without Optional Fields")
         .email("glauciocgoncalves@gmail.com")
@@ -556,7 +556,7 @@ class CompanyRequestHandlerTest {
     assertThat(response.getBody()).contains("New Company without Optional Fields");
 
     // Verify that the contactPerson with empty gender fields was processed correctly
-    ArgumentCaptor<NaturalPerson> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPerson.class);
+    ArgumentCaptor<NaturalPersonV2> contactPersonCaptor = ArgumentCaptor.forClass(NaturalPersonV2.class);
     verify(companyService).update(
         eq(companyId),
         eq("74.790.229/0001-03"),
@@ -571,7 +571,7 @@ class CompanyRequestHandlerTest {
         contactPersonCaptor.capture(),
         any());
 
-    NaturalPerson capturedContactPerson = contactPersonCaptor.getValue();
+    NaturalPersonV2 capturedContactPerson = contactPersonCaptor.getValue();
     assertThat(capturedContactPerson.getName()).isEqualTo("Carla");
     assertThat(capturedContactPerson.getEmail()).isEqualTo("carla@gmail.com");
     assertThat(capturedContactPerson.getGender()).isNull(); // Empty string should be converted to null

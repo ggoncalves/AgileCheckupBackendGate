@@ -43,7 +43,7 @@ class AssessmentMatrixRequestHandlerTest {
   ArgumentCaptor<AssessmentConfiguration> configurationCaptor;
 
   @Captor
-  ArgumentCaptor<Map<String, Pillar>> pillarMapCaptor;
+  ArgumentCaptor<Map<String, PillarV2>> pillarMapCaptor;
   @Mock
   private com.amazonaws.services.lambda.runtime.LambdaLogger lambdaLogger;
 
@@ -122,15 +122,15 @@ class AssessmentMatrixRequestHandlerTest {
         eq(null));
 
     // Verify the pillar map was built correctly
-    Map<String, Pillar> capturedPillarMap = pillarMapCaptor.getValue();
+    Map<String, PillarV2> capturedPillarMap = pillarMapCaptor.getValue();
     assertThat(capturedPillarMap).containsKey("p1");
 
-    Pillar pillar = capturedPillarMap.get("p1");
+    PillarV2 pillar = capturedPillarMap.get("p1");
     assertThat(pillar.getName()).isEqualTo("Technical Skills");
     assertThat(pillar.getDescription()).isEqualTo("Technical knowledge and abilities");
     assertThat(pillar.getCategoryMap()).containsKeys("c1", "c2");
 
-    Category category1 = pillar.getCategoryMap().get("c1");
+    CategoryV2 category1 = pillar.getCategoryMap().get("c1");
     assertThat(category1.getName()).isEqualTo("Programming");
     assertThat(category1.getDescription()).isEqualTo("Programming skills and knowledge");
 
@@ -855,5 +855,119 @@ class AssessmentMatrixRequestHandlerTest {
         .score(100.0)
         .pillarIdToPillarScoreMap(new HashMap<>())
         .build();
+  }
+
+  @Test
+  void shouldSuccessfullyCreateAssessmentMatrixWithV2PillarAndCategory() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \"V2 Engineering Matrix\",\n" +
+        "  \"description\": \"V2 Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-v2-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"v2-3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {\n" +
+        "    \"p1-v2\": {\n" +
+        "      \"name\": \"Technical Skills V2\",\n" +
+        "      \"description\": \"V2 Technical knowledge and abilities\",\n" +
+        "      \"categoryMap\": {\n" +
+        "        \"c1-v2\": {\n" +
+        "          \"name\": \"Programming V2\",\n" +
+        "          \"description\": \"V2 Programming skills and knowledge\"\n" +
+        "        },\n" +
+        "        \"c2-v2\": {\n" +
+        "          \"name\": \"Architecture V2\",\n" +
+        "          \"description\": \"V2 System design and architecture\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    },\n" +
+        "    \"p2-v2\": {\n" +
+        "      \"name\": \"Soft Skills V2\",\n" +
+        "      \"description\": \"V2 Communication and teamwork\",\n" +
+        "      \"categoryMap\": {\n" +
+        "        \"c3-v2\": {\n" +
+        "          \"name\": \"Leadership V2\",\n" +
+        "          \"description\": \"V2 Leadership abilities\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  },\n" +
+        "  \"configuration\": {\n" +
+        "    \"allowQuestionReview\": false,\n" +
+        "    \"requireAllQuestions\": true,\n" +
+        "    \"autoSave\": false,\n" +
+        "    \"navigationMode\": \"SEQUENTIAL\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    // Create a sample assessment matrix to return
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-v2-matrix-id")
+        .name("V2 Engineering Matrix")
+        .description("V2 Competency assessment for engineering roles")
+        .tenantId("tenant-v2-test-id-123")
+        .performanceCycleId("v2-3837551b-20f2-41eb-9779-8203a5209c45")
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService)
+        .create(anyString(), anyString(), anyString(), anyString(), any(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    // Verify the service was called with correct parameters
+    verify(assessmentMatrixService).create(
+        eq("V2 Engineering Matrix"),
+        eq("V2 Competency assessment for engineering roles"),
+        eq("tenant-v2-test-id-123"),
+        eq("v2-3837551b-20f2-41eb-9779-8203a5209c45"),
+        pillarMapCaptor.capture(),
+        configurationCaptor.capture());
+
+    // Verify the V2 pillar map was built correctly
+    Map<String, PillarV2> capturedPillarMap = pillarMapCaptor.getValue();
+    assertThat(capturedPillarMap).hasSize(2);
+    assertThat(capturedPillarMap).containsKeys("p1-v2", "p2-v2");
+
+    // Verify first V2 pillar
+    PillarV2 pillar1 = capturedPillarMap.get("p1-v2");
+    assertThat(pillar1.getId()).isEqualTo("p1-v2");
+    assertThat(pillar1.getName()).isEqualTo("Technical Skills V2");
+    assertThat(pillar1.getDescription()).isEqualTo("V2 Technical knowledge and abilities");
+    assertThat(pillar1.getCategoryMap()).hasSize(2);
+
+    // Verify V2 categories in first pillar
+    CategoryV2 category1 = pillar1.getCategoryMap().get("c1-v2");
+    assertThat(category1.getId()).isEqualTo("c1-v2");
+    assertThat(category1.getName()).isEqualTo("Programming V2");
+    assertThat(category1.getDescription()).isEqualTo("V2 Programming skills and knowledge");
+
+    CategoryV2 category2 = pillar1.getCategoryMap().get("c2-v2");
+    assertThat(category2.getId()).isEqualTo("c2-v2");
+    assertThat(category2.getName()).isEqualTo("Architecture V2");
+    assertThat(category2.getDescription()).isEqualTo("V2 System design and architecture");
+
+    // Verify second V2 pillar
+    PillarV2 pillar2 = capturedPillarMap.get("p2-v2");
+    assertThat(pillar2.getId()).isEqualTo("p2-v2");
+    assertThat(pillar2.getName()).isEqualTo("Soft Skills V2");
+    assertThat(pillar2.getDescription()).isEqualTo("V2 Communication and teamwork");
+    assertThat(pillar2.getCategoryMap()).hasSize(1);
+
+    // Verify configuration
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
+    assertThat(capturedConfig.getRequireAllQuestions()).isTrue();
+    assertThat(capturedConfig.getAutoSave()).isFalse();
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.SEQUENTIAL);
+
+    // Verify the response
+    assertThat(response.getStatusCode()).isEqualTo(201);
+    assertThat(response.getBody()).contains("new-v2-matrix-id");
   }
 }

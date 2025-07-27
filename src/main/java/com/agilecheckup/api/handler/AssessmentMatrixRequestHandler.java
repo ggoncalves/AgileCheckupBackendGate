@@ -6,6 +6,8 @@ import com.agilecheckup.gate.dto.DashboardResponse;
 import com.agilecheckup.gate.dto.EmployeeAssessmentDetail;
 import com.agilecheckup.gate.dto.EmployeePageResponse;
 import com.agilecheckup.gate.dto.TeamSummary;
+import com.agilecheckup.api.model.CategoryApiV2;
+import com.agilecheckup.api.model.PillarApiV2;
 import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -91,8 +93,8 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-      // Create the pillar map with proper types
-      Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
+      // Create the pillar map with V2 types
+      Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
 
       // Create the assessment configuration if provided
       AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
@@ -123,8 +125,8 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-      // Create the pillar map with proper types
-      Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
+      // Create the pillar map with V2 types
+      Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
 
       // Create the assessment configuration if provided
       AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
@@ -375,6 +377,91 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
    */
   private DashboardResponse convertToDashboardResponse(com.agilecheckup.service.dto.AssessmentDashboardData dashboardData) {
     return convertToDashboardResponse(dashboardData, 1, 50);
+  }
+
+  /**
+   * Builds PillarV2 map from request data using V2 entities
+   */
+  private Map<String, PillarV2> buildPillarMapV2(Map<String, Object> requestMap) {
+    Map<String, PillarV2> pillarMap = new HashMap<>();
+    if (requestMap.containsKey("pillarMap") && requestMap.get("pillarMap") != null) {
+      Map<String, Object> rawPillarMap = (Map<String, Object>) requestMap.get("pillarMap");
+
+      for (Map.Entry<String, Object> entry : rawPillarMap.entrySet()) {
+        String pillarId = entry.getKey();
+        Map<String, Object> pillarData = (Map<String, Object>) entry.getValue();
+
+        Map<String, CategoryV2> categoryMap = new HashMap<>();
+        if (pillarData.containsKey("categoryMap") && pillarData.get("categoryMap") != null) {
+          Map<String, Object> rawCategoryMap = (Map<String, Object>) pillarData.get("categoryMap");
+
+          for (Map.Entry<String, Object> catEntry : rawCategoryMap.entrySet()) {
+            String categoryId = catEntry.getKey();
+            Map<String, Object> categoryData = (Map<String, Object>) catEntry.getValue();
+
+            CategoryV2 category = CategoryV2.builder()
+                .id(categoryId)
+                .name((String) categoryData.get("name"))
+                .description((String) categoryData.get("description"))
+                .build();
+
+            categoryMap.put(categoryId, category);
+          }
+        }
+
+        PillarV2 pillar = PillarV2.builder()
+            .id(pillarId)
+            .name((String) pillarData.get("name"))
+            .description((String) pillarData.get("description"))
+            .categoryMap(categoryMap)
+            .build();
+
+        pillarMap.put(pillarId, pillar);
+      }
+    }
+    return pillarMap;
+  }
+
+  /**
+   * Converts PillarV2 entity to PillarApiV2 API model
+   */
+  private PillarApiV2 convertPillarV2ToApi(PillarV2 pillar) {
+    if (pillar == null) {
+      return null;
+    }
+
+    Map<String, CategoryApiV2> categoryApiMap = new HashMap<>();
+    if (pillar.getCategoryMap() != null) {
+      for (Map.Entry<String, CategoryV2> entry : pillar.getCategoryMap().entrySet()) {
+        categoryApiMap.put(entry.getKey(), convertCategoryV2ToApi(entry.getValue()));
+      }
+    }
+
+    return PillarApiV2.builder()
+        .id(pillar.getId())
+        .name(pillar.getName())
+        .description(pillar.getDescription())
+        .categoryMap(categoryApiMap)
+        .createdDate(pillar.getCreatedDate() != null ? pillar.getCreatedDate().toString() : null)
+        .lastUpdatedDate(pillar.getLastUpdatedDate() != null ? pillar.getLastUpdatedDate().toString() : null)
+        .build();
+  }
+
+  /**
+   * Converts CategoryV2 entity to CategoryApiV2 API model
+   */
+  private CategoryApiV2 convertCategoryV2ToApi(CategoryV2 category) {
+    if (category == null) {
+      return null;
+    }
+
+    return CategoryApiV2.builder()
+        .id(category.getId())
+        .name(category.getName())
+        .description(category.getDescription())
+        .createdDate(category.getCreatedDate() != null ? category.getCreatedDate().toString() : null)
+        .lastUpdatedDate(category.getLastUpdatedDate() != null ? category.getLastUpdatedDate().toString() : null)
+        .build();
   }
 
 }

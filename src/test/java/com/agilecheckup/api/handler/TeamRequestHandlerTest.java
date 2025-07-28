@@ -1,8 +1,8 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Department;
-import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.persistency.entity.DepartmentV2;
+import com.agilecheckup.persistency.entity.TeamV2;
 import com.agilecheckup.service.DepartmentService;
 import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -71,10 +71,10 @@ class TeamRequestHandlerTest {
         .withHttpMethod("GET")
         .withQueryStringParameters(queryParams);
 
-    Department department = createDepartment("dept-1", "Engineering");
-    Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
-    Team team2 = createTeam("team-2", "Team Beta", department, tenantId);
-    List<Team> teams = Arrays.asList(team1, team2);
+    DepartmentV2 department = createDepartment("dept-1", "Engineering");
+    TeamV2 team1 = createTeam("team-1", "Team Alpha", department, tenantId);
+    TeamV2 team2 = createTeam("team-2", "Team Beta", department, tenantId);
+    List<TeamV2> teams = Arrays.asList(team1, team2);
 
     doReturn(teams).when(teamService).findAllByTenantId(tenantId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -104,11 +104,11 @@ class TeamRequestHandlerTest {
         .withHttpMethod("GET")
         .withQueryStringParameters(queryParams);
 
-    Department department = createDepartment(departmentId, "Engineering");
-    Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
-    List<Team> filteredTeams = Collections.singletonList(team1);
+    DepartmentV2 department = createDepartment(departmentId, "Engineering");
+    TeamV2 team1 = createTeam("team-1", "Team Alpha", department, tenantId);
+    List<TeamV2> filteredTeams = Collections.singletonList(team1);
 
-    doReturn(filteredTeams).when(teamService).findByDepartmentId(departmentId, tenantId);
+    doReturn(filteredTeams).when(teamService).findByDepartmentId(departmentId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
 
     // When
@@ -118,7 +118,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains("team-1", "Team Alpha");
     assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
-    verify(teamService).findByDepartmentId(departmentId, tenantId);
+    verify(teamService).findByDepartmentId(departmentId);
     verify(teamService, never()).findAllByTenantId(tenantId);
     verify(teamService, never()).findAll();
   }
@@ -138,7 +138,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getBody()).isEqualTo("tenantId is required");
     verify(teamService, never()).findAll();
     verify(teamService, never()).findAllByTenantId(anyString());
-    verify(teamService, never()).findByDepartmentId(anyString(), anyString());
+    verify(teamService, never()).findByDepartmentId(anyString());
   }
 
   // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
@@ -149,8 +149,8 @@ class TeamRequestHandlerTest {
         .withPath("/teams/" + teamId)
         .withHttpMethod("GET");
 
-    Department department = createDepartment("dept-1", "Engineering");
-    Team team = createTeam(teamId, "Team Alpha", department, "tenant-123");
+    DepartmentV2 department = createDepartment("dept-1", "Engineering");
+    TeamV2 team = createTeam(teamId, "Team Alpha", department, "tenant-123");
 
     doReturn(Optional.of(team)).when(teamService).findById(teamId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -199,11 +199,18 @@ class TeamRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    Department department = createDepartment("dept-1", "Engineering");
-    Team createdTeam = createTeam("new-team-id", "New Team", department, "tenant-123");
-    createdTeam.setDescription("A new development team");
+    DepartmentV2 department = createDepartment("dept-1", "Engineering");
+    TeamV2 createdTeam = createTeam("new-team-id", "New Team", department, "tenant-123");
+    // Note: TeamV2 is immutable with SuperBuilder, so we need to create a new instance
+    createdTeam = TeamV2.builder()
+        .id(createdTeam.getId())
+        .name(createdTeam.getName())
+        .description("A new development team")
+        .tenantId(createdTeam.getTenantId())
+        .departmentId(createdTeam.getDepartmentId())
+        .build();
 
-    doReturn(Optional.of(createdTeam)).when(teamService).create("New Team", "A new development team", "tenant-123", "dept-1");
+    doReturn(Optional.of(createdTeam)).when(teamService).create("tenant-123", "New Team", "A new development team", "dept-1");
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
 
     // When
@@ -213,7 +220,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(201);
     assertThat(response.getBody()).contains("new-team-id", "New Team");
     assertThat(response.getBody()).contains("Engineering"); // Department name should be in response
-    verify(teamService).create("New Team", "A new development team", "tenant-123", "dept-1");
+    verify(teamService).create("tenant-123", "New Team", "A new development team", "dept-1");
   }
 
   @Test
@@ -257,11 +264,18 @@ class TeamRequestHandlerTest {
         .withHttpMethod("PUT")
         .withBody(requestBody);
 
-    Department department = createDepartment("dept-2", "Operations");
-    Team updatedTeam = createTeam(teamId, "Updated Team", department, "tenant-123");
-    updatedTeam.setDescription("Updated description");
+    DepartmentV2 department = createDepartment("dept-2", "Operations");
+    TeamV2 updatedTeam = createTeam(teamId, "Updated Team", department, "tenant-123");
+    // Note: TeamV2 is immutable with SuperBuilder, so we need to create a new instance
+    updatedTeam = TeamV2.builder()
+        .id(updatedTeam.getId())
+        .name(updatedTeam.getName())
+        .description("Updated description")
+        .tenantId(updatedTeam.getTenantId())
+        .departmentId(updatedTeam.getDepartmentId())
+        .build();
 
-    doReturn(Optional.of(updatedTeam)).when(teamService).update(teamId, "Updated Team", "Updated description", "tenant-123", "dept-2");
+    doReturn(Optional.of(updatedTeam)).when(teamService).update(teamId, "tenant-123", "Updated Team", "Updated description", "dept-2");
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
 
     // When
@@ -271,7 +285,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains(teamId, "Updated Team");
     assertThat(response.getBody()).contains("Operations"); // Department name should be in response
-    verify(teamService).update(teamId, "Updated Team", "Updated description", "tenant-123", "dept-2");
+    verify(teamService).update(teamId, "tenant-123", "Updated Team", "Updated description", "dept-2");
   }
 
   @Test
@@ -308,8 +322,8 @@ class TeamRequestHandlerTest {
         .withPath("/teams/" + teamId)
         .withHttpMethod("DELETE");
 
-    Department department = createDepartment("dept-1", "Engineering");
-    Team team = createTeam(teamId, "Team to Delete", department, "tenant-123");
+    DepartmentV2 department = createDepartment("dept-1", "Engineering");
+    TeamV2 team = createTeam(teamId, "Team to Delete", department, "tenant-123");
 
     doReturn(Optional.of(team)).when(teamService).findById(teamId);
 
@@ -320,7 +334,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(204);
     assertThat(response.getBody()).isEmpty();
     verify(teamService).findById(teamId);
-    verify(teamService).delete(team);
+    verify(teamService).deleteById(teamId);
   }
 
   @Test
@@ -340,7 +354,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(404);
     assertThat(response.getBody()).isEqualTo("Team not found");
     verify(teamService).findById(teamId);
-    verify(teamService, never()).delete(any(Team.class));
+    verify(teamService, never()).deleteById(anyString());
   }
 
   @Test
@@ -389,8 +403,8 @@ class TeamRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    // Mock service to return empty when called with null values
-    doReturn(Optional.empty()).when(teamService).create(anyString(), isNull(), isNull(), isNull());
+    // Mock service to return empty when called with null values (V2 API signature: tenantId, name, description, departmentId)
+    doReturn(Optional.empty()).when(teamService).create(isNull(), anyString(), isNull(), isNull());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -398,7 +412,7 @@ class TeamRequestHandlerTest {
     // Then
     assertThat(response.getStatusCode()).isEqualTo(400); // Missing required fields should return bad request
     assertThat(response.getBody()).isEqualTo("Failed to create team");
-    verify(teamService).create("Incomplete Team", null, null, null);
+    verify(teamService).create(null, "Incomplete Team", null, null);
   }
 
   @Test
@@ -418,21 +432,21 @@ class TeamRequestHandlerTest {
   }
 
   // Helper methods
-  private Department createDepartment(String id, String name) {
-    Department department = new Department();
+  private DepartmentV2 createDepartment(String id, String name) {
+    DepartmentV2 department = new DepartmentV2();
     department.setId(id);
     department.setName(name);
     department.setDescription(name + " Department");
     return department;
   }
 
-  private Team createTeam(String id, String name, Department department, String tenantId) {
-    Team team = new Team();
-    team.setId(id);
-    team.setName(name);
-    team.setDepartmentId(department.getId());
-    team.setTenantId(tenantId);
-    team.setDescription(name + " Description");
-    return team;
+  private TeamV2 createTeam(String id, String name, DepartmentV2 department, String tenantId) {
+    return TeamV2.builder()
+        .id(id)
+        .name(name)
+        .description(name + " Description")
+        .tenantId(tenantId)
+        .departmentId(department.getId())
+        .build();
   }
 }

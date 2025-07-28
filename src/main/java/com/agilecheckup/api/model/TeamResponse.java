@@ -2,11 +2,13 @@ package com.agilecheckup.api.model;
 
 import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.persistency.entity.TeamV2;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Data
@@ -15,14 +17,15 @@ import java.util.Date;
 @AllArgsConstructor
 public class TeamResponse {
     private String id;
-    private Date createdDate;
-    private Date lastUpdatedDate;
+    private Instant createdDate;
+    private Instant lastUpdatedDate;
     private String tenantId;
     private String name;
     private String description;
+    private String departmentId;
     private DepartmentV2 department;
     
-    public static TeamResponse fromTeam(Team team, DepartmentV2 department) {
+    public static TeamResponse fromTeamV2(TeamV2 team, DepartmentV2 department) {
         return TeamResponse.builder()
                 .id(team.getId())
                 .createdDate(team.getCreatedDate())
@@ -30,6 +33,21 @@ public class TeamResponse {
                 .tenantId(team.getTenantId())
                 .name(team.getName())
                 .description(team.getDescription())
+                .departmentId(team.getDepartmentId())
+                .department(department)
+                .build();
+    }
+    
+    // Legacy support for Team (V1) entities
+    public static TeamResponse fromTeam(Team team, DepartmentV2 department) {
+        return TeamResponse.builder()
+                .id(team.getId())
+                .createdDate(team.getCreatedDate() != null ? team.getCreatedDate().toInstant() : null)
+                .lastUpdatedDate(team.getLastUpdatedDate() != null ? team.getLastUpdatedDate().toInstant() : null)
+                .tenantId(team.getTenantId())
+                .name(team.getName())
+                .description(team.getDescription())
+                .departmentId(team.getDepartmentId())
                 .department(department)
                 .build();
     }

@@ -3,7 +3,7 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.api.model.TeamResponse;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.persistency.entity.TeamV2;
 import com.agilecheckup.service.DepartmentService;
 import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -79,15 +79,15 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       String tenantId = queryParams.get("tenantId");
       String departmentId = queryParams.get("departmentId");
       
-      // If departmentId is provided, filter by both tenant and department
+      // If departmentId is provided, filter by department
       if (departmentId != null) {
-        List<Team> teams = teamService.findByDepartmentId(departmentId, tenantId);
+        List<TeamV2> teams = teamService.findByDepartmentId(departmentId);
         List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
         return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
       // If only tenantId is provided, return all teams for that tenant
       else {
-        List<Team> teams = teamService.findAllByTenantId(tenantId);
+        List<TeamV2> teams = teamService.findAllByTenantId(tenantId);
         List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
         return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
@@ -98,7 +98,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<Team> team = teamService.findById(id);
+    Optional<TeamV2> team = teamService.findById(id);
 
     if (team.isPresent()) {
       TeamResponse response = enrichTeamWithDepartment(team.get());
@@ -111,10 +111,10 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<Team> team = teamService.create(
+    Optional<TeamV2> team = teamService.create(
+        (String) requestMap.get("tenantId"),
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
         (String) requestMap.get("departmentId")
     );
 
@@ -129,11 +129,11 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<Team> team = teamService.update(
+    Optional<TeamV2> team = teamService.update(
         id,
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
         (String) requestMap.get("tenantId"),
+        (String) requestMap.get("name"), 
+        (String) requestMap.get("description"),
         (String) requestMap.get("departmentId")
     );
 
@@ -146,10 +146,10 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<Team> team = teamService.findById(id);
+    Optional<TeamV2> team = teamService.findById(id);
 
     if (team.isPresent()) {
-      teamService.delete(team.get());
+      teamService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Team not found");
@@ -161,12 +161,12 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     return path.substring(path.lastIndexOf("/") + 1);
   }
   
-  private TeamResponse enrichTeamWithDepartment(Team team) {
+  private TeamResponse enrichTeamWithDepartment(TeamV2 team) {
     Optional<DepartmentV2> department = departmentService.findById(team.getDepartmentId());
-    return TeamResponse.fromTeam(team, department.orElse(null));
+    return TeamResponse.fromTeamV2(team, department.orElse(null));
   }
   
-  private List<TeamResponse> enrichTeamsWithDepartments(List<Team> teams) {
+  private List<TeamResponse> enrichTeamsWithDepartments(List<TeamV2> teams) {
     return teams.stream()
         .map(this::enrichTeamWithDepartment)
         .collect(Collectors.toList());

@@ -1,20 +1,22 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.PerformanceCycle;
+import com.agilecheckup.persistency.entity.PerformanceCycleV2;
 import com.agilecheckup.service.PerformanceCycleService;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,12 +42,18 @@ class PerformanceCycleRequestHandlerTest {
     @Mock
     private Context mockContext;
 
+    @Mock
+    private LambdaLogger mockLambdaLogger;
+
     private PerformanceCycleRequestHandler handler;
 
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper();
-        doReturn(mockPerformanceCycleService).when(mockServiceComponent).buildPerformanceCycleService();
+        objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+        objectMapper.registerModule(new JavaTimeModule());
+        lenient().doReturn(mockPerformanceCycleService).when(mockServiceComponent).buildPerformanceCycleService();
+        lenient().doReturn(mockLambdaLogger).when(mockContext).getLogger();
         handler = new PerformanceCycleRequestHandler(mockServiceComponent, objectMapper);
     }
 
@@ -57,7 +66,7 @@ class PerformanceCycleRequestHandlerTest {
             .withHttpMethod("GET")
             .withQueryStringParameters(java.util.Collections.singletonMap("tenantId", tenantId));
 
-        PerformanceCycle cycle1 = PerformanceCycle.builder()
+        PerformanceCycleV2 cycle1 = PerformanceCycleV2.builder()
                 .id("1")
                 .name("Q1 2024")
                 .description("First quarter")
@@ -67,7 +76,7 @@ class PerformanceCycleRequestHandlerTest {
                 .isTimeSensitive(false)
                 .build();
 
-        PerformanceCycle cycle2 = PerformanceCycle.builder()
+        PerformanceCycleV2 cycle2 = PerformanceCycleV2.builder()
                 .id("2")
                 .name("Q2 2024")
                 .description("Second quarter")
@@ -75,11 +84,11 @@ class PerformanceCycleRequestHandlerTest {
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(true)
-                .startDate(new Date())
-                .endDate(new Date())
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
-        List<PerformanceCycle> cyclesList = Arrays.asList(cycle1, cycle2);
+        List<PerformanceCycleV2> cyclesList = Arrays.asList(cycle1, cycle2);
         doReturn(cyclesList).when(mockPerformanceCycleService).findAllByTenantId(tenantId);
 
         // Execute
@@ -113,7 +122,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("GET");
 
-        PerformanceCycle cycle = PerformanceCycle.builder()
+        PerformanceCycleV2 cycle = PerformanceCycleV2.builder()
                 .id(cycleId)
                 .name("Annual Review 2024")
                 .description("Annual performance review")
@@ -170,7 +179,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycle createdCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
                 .id("new-id")
                 .name("Q3 2024")
                 .description("Third quarter review")
@@ -178,19 +187,19 @@ class PerformanceCycleRequestHandlerTest {
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(true) // Should be true because endDate is present
-                .startDate(new Date())
-                .endDate(new Date())
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("tenant1"),
                 eq("Q3 2024"),
                 eq("Third quarter review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(false),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
 
         // Execute
@@ -199,14 +208,14 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
+                eq("tenant1"),
                 eq("Q3 2024"),
                 eq("Third quarter review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(false),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
     }
 
@@ -227,7 +236,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycle createdCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
                 .id("new-id")
                 .name("Ongoing Review")
                 .description("Continuous performance review")
@@ -238,9 +247,9 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Ongoing Review"),
                 eq("Continuous performance review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
@@ -254,9 +263,9 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Ongoing Review"),
                 eq("Continuous performance review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
@@ -285,7 +294,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        PerformanceCycle updatedCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 updatedCycle = PerformanceCycleV2.builder()
                 .id(cycleId)
                 .name("Updated Q1 2024")
                 .description("Updated first quarter")
@@ -293,20 +302,20 @@ class PerformanceCycleRequestHandlerTest {
                 .companyId("company1")
                 .isActive(false)
                 .isTimeSensitive(true)
-                .startDate(new Date())
-                .endDate(new Date())
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
         doReturn(Optional.of(updatedCycle)).when(mockPerformanceCycleService).update(
                 eq(cycleId),
+                eq("tenant1"),
                 eq("Updated Q1 2024"),
                 eq("Updated first quarter"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(false),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
 
         // Execute
@@ -316,14 +325,14 @@ class PerformanceCycleRequestHandlerTest {
         assertEquals(200, response.getStatusCode());
         verify(mockPerformanceCycleService).update(
                 eq(cycleId),
+                eq("tenant1"),
                 eq("Updated Q1 2024"),
                 eq("Updated first quarter"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(false),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
     }
 
@@ -373,7 +382,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("DELETE");
 
-        PerformanceCycle cycle = PerformanceCycle.builder()
+        PerformanceCycleV2 cycle = PerformanceCycleV2.builder()
                 .id(cycleId)
                 .name("To Delete")
                 .description("Cycle to be deleted")
@@ -391,7 +400,7 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(204, response.getStatusCode());
         verify(mockPerformanceCycleService).findById(cycleId);
-        verify(mockPerformanceCycleService).delete(cycle);
+        verify(mockPerformanceCycleService).deleteById(cycleId);
     }
 
     @Test
@@ -446,7 +455,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycle createdCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
                 .id("new-id")
                 .name("Q4 2024")
                 .description("Fourth quarter review")
@@ -454,19 +463,19 @@ class PerformanceCycleRequestHandlerTest {
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(true)
-                .startDate(new Date())
-                .endDate(new Date())
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Q4 2024"),
                 eq("Fourth quarter review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
 
         // Execute
@@ -475,14 +484,14 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Q4 2024"),
                 eq("Fourth quarter review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
     }
 
@@ -505,7 +514,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycle createdCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
                 .id("new-id")
                 .name("Q1 2025")
                 .description("First quarter 2025")
@@ -513,19 +522,19 @@ class PerformanceCycleRequestHandlerTest {
                 .companyId("company1")
                 .isActive(true)
                 .isTimeSensitive(true)
-                .startDate(new Date())
-                .endDate(new Date())
+                .startDate(LocalDate.of(2024, 1, 1))
+                .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Q1 2025"),
                 eq("First quarter 2025"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
 
         // Execute
@@ -534,14 +543,14 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Q1 2025"),
                 eq("First quarter 2025"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(true),
-                any(Date.class),
-                any(Date.class)
+                any(LocalDate.class),
+                any(LocalDate.class)
         );
     }
 
@@ -562,7 +571,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycle createdCycle = PerformanceCycle.builder()
+        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
                 .id("new-id")
                 .name("Open Review")
                 .description("Open-ended review")
@@ -573,9 +582,9 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Open Review"),
                 eq("Open-ended review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(false),
@@ -589,9 +598,9 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
+                eq("tenant1"),  // V2 signature: tenantId first
                 eq("Open Review"),
                 eq("Open-ended review"),
-                eq("tenant1"),
                 eq("company1"),
                 eq(true),
                 eq(false),

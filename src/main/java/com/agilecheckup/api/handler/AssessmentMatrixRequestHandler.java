@@ -9,7 +9,9 @@ import com.agilecheckup.gate.dto.TeamSummary;
 import com.agilecheckup.api.model.CategoryApiV2;
 import com.agilecheckup.api.model.PillarApiV2;
 import com.agilecheckup.persistency.entity.*;
+import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
 import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -25,11 +27,13 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   private static final Pattern DASHBOARD_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/dashboard/?$");
 
   private final AssessmentMatrixService assessmentMatrixService;
+  private final AssessmentMatrixServiceV2 assessmentMatrixServiceV2;
   private final CacheManager cacheManager;
 
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     super(objectMapper, "assessmentmatrices");
     this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
     this.cacheManager = new CacheManager(); // Simple instantiation for now - to be fixed later
   }
 
@@ -37,6 +41,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper, CacheManager cacheManager) {
     super(objectMapper, "assessmentmatrices");
     this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
     this.cacheManager = cacheManager;
   }
 
@@ -70,7 +75,9 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
     if (queryParams != null && queryParams.containsKey("tenantId")) {
       String tenantId = queryParams.get("tenantId");
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrixService.findAllByTenantId(tenantId)));
+      List<AssessmentMatrixV2> matrices = assessmentMatrixServiceV2.findAllByTenantId(tenantId);
+      String jsonResponse = objectMapper.writeValueAsString(matrices);
+      return ResponseBuilder.buildResponse(200, jsonResponse);
     }
 
     // No tenantId provided - return error for security
@@ -79,7 +86,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
   @Override
   protected APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.findById(id);
+    Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.findById(id);
 
     if (assessmentMatrix.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrix.get()));
@@ -100,7 +107,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
 
       // Now create the assessment matrix with properly typed pillar map and configuration
-      Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.create(
+      Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.create(
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
           (String) requestMap.get("tenantId"),
@@ -131,7 +138,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       // Create the assessment configuration if provided
       AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
 
-      Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.update(
+      Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.update(
           id,
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
@@ -235,7 +242,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
     String tenantId = (String) requestMap.get("tenantId");
 
-    AssessmentMatrix assessmentMatrix = assessmentMatrixService.updateCurrentPotentialScore(id, tenantId);
+    AssessmentMatrixV2 assessmentMatrix = assessmentMatrixServiceV2.updateCurrentPotentialScore(id, tenantId);
 
     if (assessmentMatrix != null) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrix));
@@ -246,10 +253,9 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
   @Override
   protected APIGatewayProxyResponseEvent handleDelete(String id) throws Exception {
-    Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.findById(id);
+    boolean deleted = assessmentMatrixServiceV2.deleteById(id);
 
-    if (assessmentMatrix.isPresent()) {
-      assessmentMatrixService.delete(assessmentMatrix.get());
+    if (deleted) {
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Assessment matrix not found");
@@ -261,46 +267,52 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
    * Returns comprehensive dashboard data with caching and pagination support.
    */
   private APIGatewayProxyResponseEvent handleGetDashboard(String matrixId, APIGatewayProxyRequestEvent input, Context context) throws Exception {
-    Map<String, String> queryParams = input.getQueryStringParameters();
+    try {
+      Map<String, String> queryParams = input.getQueryStringParameters();
 
-    // Extract required tenant ID
-    if (queryParams == null || !queryParams.containsKey("tenantId")) {
-      return ResponseBuilder.buildResponse(400, "tenantId is required");
+      // Extract required tenant ID
+      if (queryParams == null || !queryParams.containsKey("tenantId")) {
+        return ResponseBuilder.buildResponse(400, "tenantId is required");
+      }
+      String tenantId = queryParams.get("tenantId");
+
+      // Extract pagination parameters
+      int page = extractIntParam(queryParams, "page", 1);
+      int pageSize = extractIntParam(queryParams, "pageSize", 50);
+
+      // Validate pagination parameters
+      if (page < 1 || pageSize < 1 || pageSize > 200) {
+        return ResponseBuilder.buildResponse(400, "Invalid pagination parameters. Page must be >= 1, pageSize must be 1-200");
+      }
+
+      // Check cache first (include pagination in cache key)
+      String cacheKey = "dashboard:" + matrixId + ":" + tenantId + ":" + page + ":" + pageSize;
+      Optional<DashboardResponse> cachedResponse = cacheManager.get(cacheKey, DashboardResponse.class);
+
+      if (cachedResponse.isPresent()) {
+        return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(cachedResponse.get()));
+      }
+
+      // Get dashboard data from service
+      Optional<com.agilecheckup.service.dto.AssessmentDashboardData> dashboardData =
+          assessmentMatrixServiceV2.getAssessmentDashboard(matrixId, tenantId);
+
+      if (!dashboardData.isPresent()) {
+        return ResponseBuilder.buildResponse(404, "Assessment matrix not found or access denied");
+      }
+
+      // Convert to presentation DTO with pagination
+      DashboardResponse response = convertToDashboardResponse(dashboardData.get(), page, pageSize);
+
+      // Cache the response
+      cacheManager.put(cacheKey, response);
+
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
+      
+    } catch (Exception e) {
+      context.getLogger().log("Dashboard error: " + e.getMessage());
+      throw e;
     }
-    String tenantId = queryParams.get("tenantId");
-
-    // Extract pagination parameters
-    int page = extractIntParam(queryParams, "page", 1);
-    int pageSize = extractIntParam(queryParams, "pageSize", 50);
-
-    // Validate pagination parameters
-    if (page < 1 || pageSize < 1 || pageSize > 200) {
-      return ResponseBuilder.buildResponse(400, "Invalid pagination parameters. Page must be >= 1, pageSize must be 1-200");
-    }
-
-    // Check cache first (include pagination in cache key)
-    String cacheKey = "dashboard:" + matrixId + ":" + tenantId + ":" + page + ":" + pageSize;
-    Optional<DashboardResponse> cachedResponse = cacheManager.get(cacheKey, DashboardResponse.class);
-
-    if (cachedResponse.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(cachedResponse.get()));
-    }
-
-    // Get dashboard data from service
-    Optional<com.agilecheckup.service.dto.AssessmentDashboardData> dashboardData =
-        assessmentMatrixService.getAssessmentDashboard(matrixId, tenantId);
-
-    if (!dashboardData.isPresent()) {
-      return ResponseBuilder.buildResponse(404, "Assessment matrix not found or access denied");
-    }
-
-    // Convert to presentation DTO with pagination
-    DashboardResponse response = convertToDashboardResponse(dashboardData.get(), page, pageSize);
-
-    // Cache the response
-    cacheManager.put(cacheKey, response);
-
-    return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
   }
 
   /**

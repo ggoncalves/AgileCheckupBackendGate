@@ -52,9 +52,13 @@ public abstract class AbstractCrudRequestHandler<T> implements RequestHandlerStr
             }
 
         } catch (IllegalArgumentException e) {
+            System.err.println("[ERROR] IllegalArgumentException in " + getResourceName() + " endpoint: " + e.getMessage());
+            e.printStackTrace(System.err);
             context.getLogger().log("Validation error in " + getResourceName() + " endpoint: " + e.getMessage());
             return ResponseBuilder.buildResponse(400, "Validation error: " + e.getMessage());
         } catch (Exception e) {
+            System.err.println("[ERROR] Exception in " + getResourceName() + " endpoint: " + e.getMessage());
+            e.printStackTrace(System.err);
             context.getLogger().log("Error in " + getResourceName() + " endpoint: " + e.getMessage());
             return ResponseBuilder.buildResponse(500, "Error processing " + getResourceName() + " request: " + e.getMessage());
         }

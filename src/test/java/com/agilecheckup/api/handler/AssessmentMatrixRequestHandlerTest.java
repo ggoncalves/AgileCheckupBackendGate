@@ -3,7 +3,9 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
 import com.agilecheckup.persistency.entity.*;
+import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
 import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -34,6 +36,9 @@ class AssessmentMatrixRequestHandlerTest {
   private AssessmentMatrixService assessmentMatrixService;
 
   @Mock
+  private AssessmentMatrixServiceV2 assessmentMatrixServiceV2;
+
+  @Mock
   private CacheManager cacheManager;
 
   @Mock
@@ -55,6 +60,7 @@ class AssessmentMatrixRequestHandlerTest {
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
     doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
+    doReturn(assessmentMatrixServiceV2).when(serviceComponent).buildAssessmentMatrixServiceV2();
     lenient().doReturn(lambdaLogger).when(context).getLogger();
 
     // Mock cache manager to always return empty (no cache hits)
@@ -95,7 +101,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withBody(requestBody);
 
     // Create a sample assessment matrix to return
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-matrix-id")
         .name("Engineering Matrix")
         .description("Competency assessment for engineering roles")
@@ -106,14 +112,14 @@ class AssessmentMatrixRequestHandlerTest {
         .build();
 
     // Set up the service to return the assessment matrix, capture arguments
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When - This will be using our new implementation with manual map building
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         eq("Engineering Matrix"),
         eq("Competency assessment for engineering roles"),
         eq("tenant-test-id-123"),
@@ -151,7 +157,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("GET")
         .withQueryStringParameters(queryParams);
 
-    AssessmentMatrix matrix1 = AssessmentMatrix.builder()
+    AssessmentMatrixV2 matrix1 = AssessmentMatrixV2.builder()
         .id("matrix-1")
         .name("Engineering Matrix")
         .description("For engineering assessments")
@@ -161,7 +167,7 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    AssessmentMatrix matrix2 = AssessmentMatrix.builder()
+    AssessmentMatrixV2 matrix2 = AssessmentMatrixV2.builder()
         .id("matrix-2")
         .name("Sales Matrix")
         .description("For sales assessments")
@@ -171,9 +177,9 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    List<AssessmentMatrix> matrices = Arrays.asList(matrix1, matrix2);
+    List<AssessmentMatrixV2> matrices = Arrays.asList(matrix1, matrix2);
 
-    doReturn(matrices).when(assessmentMatrixService).findAllByTenantId(tenantId);
+    doReturn(matrices).when(assessmentMatrixServiceV2).findAllByTenantId(tenantId);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -182,7 +188,7 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains("matrix-1", "Engineering Matrix");
     assertThat(response.getBody()).contains("matrix-2", "Sales Matrix");
-    verify(assessmentMatrixService).findAllByTenantId(tenantId);
+    verify(assessmentMatrixServiceV2).findAllByTenantId(tenantId);
     verify(assessmentMatrixService, never()).findAll();
   }
 
@@ -225,7 +231,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-matrix-id")
         .name("Engineering Matrix")
         .description("Competency assessment for engineering roles")
@@ -235,14 +241,14 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         eq("Engineering Matrix"),
         eq("Competency assessment for engineering roles"),
         eq("tenant-test-id-123"),
@@ -278,7 +284,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-matrix-id")
         .name("Engineering Matrix")
         .description("Competency assessment for engineering roles")
@@ -288,14 +294,14 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
     AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
@@ -323,7 +329,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-matrix-id")
         .name("Engineering Matrix")
         .description("Competency assessment for engineering roles")
@@ -333,14 +339,14 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
     AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
@@ -368,7 +374,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-matrix-id")
         .name("Engineering Matrix")
         .description("Competency assessment for engineering roles")
@@ -378,14 +384,14 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
     AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
@@ -416,7 +422,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withHttpMethod("PUT")
         .withBody(requestBody);
 
-    AssessmentMatrix updatedMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 updatedMatrix = AssessmentMatrixV2.builder()
         .id("matrix-123")
         .name("Updated Engineering Matrix")
         .description("Updated competency assessment")
@@ -426,14 +432,14 @@ class AssessmentMatrixRequestHandlerTest {
         .questionCount(0)
         .build();
 
-    doReturn(Optional.of(updatedMatrix)).when(assessmentMatrixService).update(
+    doReturn(Optional.of(updatedMatrix)).when(assessmentMatrixServiceV2).update(
         anyString(), anyString(), anyString(), anyString(), anyString(), anyMap(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(assessmentMatrixService).update(
+    verify(assessmentMatrixServiceV2).update(
         eq("matrix-123"),
         eq("Updated Engineering Matrix"),
         eq("Updated competency assessment"),
@@ -467,7 +473,7 @@ class AssessmentMatrixRequestHandlerTest {
             .completedAssessments(3)
             .build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -485,7 +491,7 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(response.getBody()).contains("\"totalEmployees\":5");
     assertThat(response.getBody()).contains("\"completedAssessments\":3");
 
-    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    verify(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
   }
 
   @Test
@@ -511,7 +517,7 @@ class AssessmentMatrixRequestHandlerTest {
     String matrixId = "nonexistent-matrix";
     String tenantId = "tenant-456";
 
-    doReturn(Optional.empty()).when(assessmentMatrixService)
+    doReturn(Optional.empty()).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -526,7 +532,7 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(response.getStatusCode()).isEqualTo(404);
     assertThat(response.getBody()).isEqualTo("Assessment matrix not found or access denied");
 
-    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    verify(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
   }
 
   @Test
@@ -548,7 +554,7 @@ class AssessmentMatrixRequestHandlerTest {
             .completedAssessments(6)
             .build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
@@ -576,7 +582,7 @@ class AssessmentMatrixRequestHandlerTest {
     // Verify team summaries are included
     assertThat(responseBody).contains("\"teamSummaries\":");
 
-    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    verify(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
   }
 
   @Test
@@ -619,7 +625,7 @@ class AssessmentMatrixRequestHandlerTest {
             .completedAssessments(3)
             .build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
@@ -664,7 +670,7 @@ class AssessmentMatrixRequestHandlerTest {
             .completedAssessments(6)
             .build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
@@ -699,7 +705,7 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(responseBody).contains("\"employeeName\":");
     assertThat(responseBody).contains("\"status\":");
 
-    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    verify(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
   }
 
   @Test
@@ -722,7 +728,7 @@ class AssessmentMatrixRequestHandlerTest {
             .completedAssessments(100)
             .build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixServiceV2)
         .getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
@@ -750,7 +756,7 @@ class AssessmentMatrixRequestHandlerTest {
     // Verify content length is appropriate for page 3 (should contain 50 employees)
     assertThat(responseBody).contains("\"content\":");
 
-    verify(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    verify(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
   }
 
   @Test
@@ -760,7 +766,7 @@ class AssessmentMatrixRequestHandlerTest {
     String tenantId = "tenant-456";
 
     doThrow(new RuntimeException("Database connection failed"))
-        .when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+        .when(assessmentMatrixServiceV2).getAssessmentDashboard(matrixId, tenantId);
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
         .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
@@ -905,7 +911,7 @@ class AssessmentMatrixRequestHandlerTest {
         .withBody(requestBody);
 
     // Create a sample assessment matrix to return
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+    AssessmentMatrixV2 createdMatrix = AssessmentMatrixV2.builder()
         .id("new-v2-matrix-id")
         .name("V2 Engineering Matrix")
         .description("V2 Competency assessment for engineering roles")
@@ -913,7 +919,7 @@ class AssessmentMatrixRequestHandlerTest {
         .performanceCycleId("v2-3837551b-20f2-41eb-9779-8203a5209c45")
         .build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService)
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixServiceV2)
         .create(anyString(), anyString(), anyString(), anyString(), any(), any());
 
     // When
@@ -921,7 +927,7 @@ class AssessmentMatrixRequestHandlerTest {
 
     // Then
     // Verify the service was called with correct parameters
-    verify(assessmentMatrixService).create(
+    verify(assessmentMatrixServiceV2).create(
         eq("V2 Engineering Matrix"),
         eq("V2 Competency assessment for engineering roles"),
         eq("tenant-v2-test-id-123"),

@@ -2,15 +2,14 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
-import com.agilecheckup.persistency.entity.question.Question;
+import com.agilecheckup.persistency.entity.question.QuestionV2;
 import com.agilecheckup.persistency.entity.question.QuestionOption;
 import com.agilecheckup.service.AssessmentNavigationService;
-import com.agilecheckup.service.QuestionService;
+import com.agilecheckup.service.QuestionServiceV2;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -28,12 +27,12 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   private static final Pattern UPDATE_CUSTOM_QUESTION_PATTERN = Pattern.compile("^/questions/([^/]+)/custom/?$");
   private static final Pattern GET_NEXT_QUESTION_PATTERN = Pattern.compile("^/questions/next/?$");
 
-  private final QuestionService questionService;
+  private final QuestionServiceV2 questionService;
   private final AssessmentNavigationService assessmentNavigationService;
   private final ObjectMapper objectMapper;
 
   public QuestionRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
-    this.questionService = serviceComponent.buildQuestionService();
+    this.questionService = serviceComponent.buildQuestionServiceV2();
     this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationService();
     this.objectMapper = objectMapper;
   }
@@ -103,12 +102,12 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(400, "Missing required query parameter: tenantId");
     }
 
-    PaginatedQueryList<Question> questions = questionService.findAllByTenantId(tenantId);
+    List<QuestionV2> questions = questionService.findAllByTenantId(tenantId);
     return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(questions));
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<Question> question = questionService.findById(id);
+    Optional<QuestionV2> question = questionService.findById(id);
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(question.get()));
@@ -123,7 +122,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(400, "Missing required query parameter: tenantId");
     }
 
-    List<Question> questions = questionService.findByAssessmentMatrixId(matrixId, tenantId);
+    List<QuestionV2> questions = questionService.findByAssessmentMatrixId(matrixId, tenantId);
     return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(questions));
   }
 
@@ -133,7 +132,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     // Convert string to enum for QuestionType
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
-    Optional<Question> question = questionService.create(
+    Optional<QuestionV2> question = questionService.create(
         (String) requestMap.get("question"),
         questionType,
         (String) requestMap.get("tenantId"),
@@ -163,7 +162,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
     );
 
-    Optional<Question> question = questionService.createCustomQuestion(
+    Optional<QuestionV2> question = questionService.createCustomQuestion(
         (String) requestMap.get("question"),
         questionType,
         (String) requestMap.get("tenantId"),
@@ -189,7 +188,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     // Convert string to enum for QuestionType
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
-    Optional<Question> question = questionService.update(
+    Optional<QuestionV2> question = questionService.update(
         id,
         (String) requestMap.get("question"),
         questionType,
@@ -220,7 +219,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
     );
 
-    Optional<Question> question = questionService.updateCustomQuestion(
+    Optional<QuestionV2> question = questionService.updateCustomQuestion(
         id,
         (String) requestMap.get("question"),
         questionType,
@@ -242,7 +241,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<Question> question = questionService.findById(id);
+    Optional<QuestionV2> question = questionService.findById(id);
 
     if (question.isPresent()) {
       questionService.delete(question.get());

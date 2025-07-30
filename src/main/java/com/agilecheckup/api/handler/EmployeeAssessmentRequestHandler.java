@@ -2,7 +2,9 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.EmployeeAssessment;
+import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
 import com.agilecheckup.service.EmployeeAssessmentService;
+import com.agilecheckup.service.EmployeeAssessmentServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -23,11 +25,11 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   private static final Pattern UPDATE_SCORE_PATTERN = Pattern.compile("^/employeeassessments/([^/]+)/score/?$");
   private static final Pattern VALIDATE_PATTERN = Pattern.compile("^/employeeassessments/validate/?$");
 
-  private final EmployeeAssessmentService employeeAssessmentService;
+  private final EmployeeAssessmentServiceV2 employeeAssessmentServiceV2;
   private final ObjectMapper objectMapper;
 
   public EmployeeAssessmentRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
-    this.employeeAssessmentService = serviceComponent.buildEmployeeAssessmentService();
+    this.employeeAssessmentServiceV2 = serviceComponent.buildEmployeeAssessmentServiceV2();
     this.objectMapper = objectMapper;
   }
 
@@ -92,12 +94,14 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     
     if (assessmentMatrixId != null && !assessmentMatrixId.isEmpty()) {
       // Filter by assessment matrix
-      return ResponseBuilder.buildResponse(200, 
-          objectMapper.writeValueAsString(employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId)));
+      var v2Results = employeeAssessmentServiceV2.findByAssessmentMatrix(assessmentMatrixId, tenantId);
+      var v1Results = v2Results.stream().map(this::adaptV2ToV1).collect(java.util.stream.Collectors.toList());
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Results));
     } else {
       // Return all for tenant
-      return ResponseBuilder.buildResponse(200, 
-          objectMapper.writeValueAsString(employeeAssessmentService.findAllByTenantId(tenantId)));
+      var v2Results = employeeAssessmentServiceV2.findAllByTenantId(tenantId);
+      var v1Results = v2Results.stream().map(this::adaptV2ToV1).collect(java.util.stream.Collectors.toList());
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Results));
     }
   }
 
@@ -109,10 +113,11 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     }
     
     String tenantId = queryParams.get("tenantId");
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.findById(id, tenantId);
+    Optional<EmployeeAssessmentV2> v2Assessment = employeeAssessmentServiceV2.findById(id, tenantId);
 
-    if (employeeAssessment.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment.get()));
+    if (v2Assessment.isPresent()) {
+      EmployeeAssessment v1Assessment = adaptV2ToV1(v2Assessment.get());
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Assessment));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found");
     }
@@ -143,13 +148,20 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
         employeeAssessment.setAnsweredQuestionCount(0);
       }
       
-      // Force validation for new entities by clearing the auto-generated ID
-      employeeAssessment.setId(null);
+      // Use V2 service create method with individual parameters
+      Optional<EmployeeAssessmentV2> createdV2 = employeeAssessmentServiceV2.create(
+          employeeAssessment.getAssessmentMatrixId(),
+          employeeAssessment.getTeamId(),
+          employeeAssessment.getEmployee().getName(),
+          employeeAssessment.getEmployee().getEmail(),
+          employeeAssessment.getEmployee().getDocumentNumber(),
+          employeeAssessment.getEmployee().getPersonDocumentType(),
+          employeeAssessment.getEmployee().getGender(),
+          employeeAssessment.getEmployee().getGenderPronoun()
+      );
       
-      // Create through service
-      EmployeeAssessment created = employeeAssessmentService.save(employeeAssessment);
-      
-      if (created != null) {
+      if (createdV2.isPresent()) {
+        EmployeeAssessment created = adaptV2ToV1(createdV2.get());
         return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
       } else {
         return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
@@ -170,13 +182,21 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       return ResponseBuilder.buildResponse(400, "tenantId is required");
     }
     
-    // Set the ID from path
-    employeeAssessment.setId(id);
+    // Use V2 service update method with individual parameters
+    Optional<EmployeeAssessmentV2> updatedV2 = employeeAssessmentServiceV2.update(
+        id,
+        employeeAssessment.getAssessmentMatrixId(),
+        employeeAssessment.getTeamId(),
+        employeeAssessment.getEmployee().getName(),
+        employeeAssessment.getEmployee().getEmail(),
+        employeeAssessment.getEmployee().getDocumentNumber(),
+        employeeAssessment.getEmployee().getPersonDocumentType(),
+        employeeAssessment.getEmployee().getGender(),
+        employeeAssessment.getEmployee().getGenderPronoun()
+    );
     
-    // Update through service
-    EmployeeAssessment updated = employeeAssessmentService.save(employeeAssessment);
-    
-    if (updated != null) {
+    if (updatedV2.isPresent()) {
+      EmployeeAssessment updated = adaptV2ToV1(updatedV2.get());
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(updated));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
@@ -187,10 +207,11 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
     String tenantId = (String) requestMap.get("tenantId");
 
-    EmployeeAssessment employeeAssessment = employeeAssessmentService.updateEmployeeAssessmentScore(id, tenantId);
+    EmployeeAssessmentV2 v2Assessment = employeeAssessmentServiceV2.updateEmployeeAssessmentScore(id, tenantId);
 
-    if (employeeAssessment != null) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment));
+    if (v2Assessment != null) {
+      EmployeeAssessment v1Assessment = adaptV2ToV1(v2Assessment);
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Assessment));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
     }
@@ -198,7 +219,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
     try {
-      employeeAssessmentService.deleteById(id);
+      employeeAssessmentServiceV2.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
     } catch (Exception e) {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found");
@@ -258,7 +279,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
   
   private APIGatewayProxyResponseEvent processEmployeeValidation(EmployeeValidationRequest request) throws Exception {
-    EmployeeValidationResponse response = employeeAssessmentService.validateEmployee(request);
+    EmployeeValidationResponse response = employeeAssessmentServiceV2.validateEmployee(request);
     
     int httpStatus = determineHttpStatus(response);
     String responseBody = objectMapper.writeValueAsString(response);
@@ -280,5 +301,47 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
         : "Error validating employee: Unknown error occurred";
     
     return ResponseBuilder.buildResponse(500, errorMessage);
+  }
+  
+  /**
+   * Convert V2 entity to V1 entity for API compatibility
+   */
+  private EmployeeAssessment adaptV2ToV1(EmployeeAssessmentV2 v2) {
+    if (v2 == null) return null;
+    
+    EmployeeAssessment v1 = new EmployeeAssessment();
+    v1.setId(v2.getId());
+    v1.setTenantId(v2.getTenantId());
+    v1.setAssessmentMatrixId(v2.getAssessmentMatrixId());
+    v1.setEmployee(v2.getEmployee());
+    v1.setTeamId(v2.getTeamId());
+    v1.setEmployeeAssessmentScore(v2.getEmployeeAssessmentScore());
+    v1.setAssessmentStatus(v2.getAssessmentStatus());
+    v1.setAnsweredQuestionCount(v2.getAnsweredQuestionCount());
+    v1.setEmployeeEmailNormalized(v2.getEmployeeEmailNormalized());
+    v1.setLastActivityDate(v2.getLastActivityDate());
+    return v1;
+  }
+  
+  /**
+   * Convert V1 entity to V2 entity for service calls
+   */
+  private EmployeeAssessmentV2 adaptV1ToV2(EmployeeAssessment v1) {
+    if (v1 == null) return null;
+    
+    EmployeeAssessmentV2 v2 = EmployeeAssessmentV2.builder()
+        .id(v1.getId())
+        .assessmentMatrixId(v1.getAssessmentMatrixId())
+        .employee(v1.getEmployee())
+        .teamId(v1.getTeamId())
+        .employeeAssessmentScore(v1.getEmployeeAssessmentScore())
+        .assessmentStatus(v1.getAssessmentStatus())
+        .answeredQuestionCount(v1.getAnsweredQuestionCount())
+        .employeeEmailNormalized(v1.getEmployeeEmailNormalized())
+        .lastActivityDate(v1.getLastActivityDate())
+        .build();
+    
+    v2.setTenantId(v1.getTenantId());
+    return v2;
   }
 }

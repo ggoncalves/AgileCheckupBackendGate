@@ -2,9 +2,9 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.AnalyticsScope;
-import com.agilecheckup.persistency.entity.AssessmentMatrix;
+import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
 import com.agilecheckup.persistency.entity.DashboardAnalytics;
-import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.agilecheckup.service.DashboardAnalyticsService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -34,7 +34,7 @@ class DashboardAnalyticsRequestHandlerTest {
     private DashboardAnalyticsService dashboardAnalyticsService;
     
     @Mock
-    private AssessmentMatrixService assessmentMatrixService;
+    private AssessmentMatrixServiceV2 assessmentMatrixService;
     
     @Mock
     private Context context;
@@ -55,7 +55,7 @@ class DashboardAnalyticsRequestHandlerTest {
         objectMapper.registerModule(new JavaTimeModule());
         
         when(serviceComponent.buildDashboardAnalyticsService()).thenReturn(dashboardAnalyticsService);
-        when(serviceComponent.buildAssessmentMatrixService()).thenReturn(assessmentMatrixService);
+        when(serviceComponent.buildAssessmentMatrixServiceV2()).thenReturn(assessmentMatrixService);
         lenient().when(context.getLogger()).thenReturn(lambdaLogger);
         
         handler = new DashboardAnalyticsRequestHandler(serviceComponent, objectMapper);
@@ -72,7 +72,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalytics();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -119,7 +119,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", "wrong-tenant");
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
 
         // When
@@ -144,7 +144,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalytics();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -221,7 +221,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
         when(dashboardAnalyticsService.getOverview(ASSESSMENT_MATRIX_ID))
                 .thenReturn(Optional.empty());
@@ -249,7 +249,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
         when(dashboardAnalyticsService.getTeamAnalytics(ASSESSMENT_MATRIX_ID, TEAM_ID))
                 .thenReturn(Optional.empty());
@@ -301,7 +301,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", "wrong-tenant");
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
 
         // When
@@ -326,7 +326,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
 
         // When
@@ -385,7 +385,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", "wrong-tenant");
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix(); // Has COMPANY_ID as tenantId
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
 
         // When
@@ -409,7 +409,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithPillarData();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -453,7 +453,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithSinglePillar();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -491,7 +491,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithPillarScores();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -537,7 +537,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithEmptyPillars();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -568,7 +568,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithMalformedJson();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -599,7 +599,7 @@ class DashboardAnalyticsRequestHandlerTest {
         queryParams.put("tenantId", COMPANY_ID);
         request.setQueryStringParameters(queryParams);
 
-        AssessmentMatrix mockMatrix = createMockAssessmentMatrix();
+        AssessmentMatrixV2 mockMatrix = createMockAssessmentMatrix();
         DashboardAnalytics mockAnalytics = createMockDashboardAnalyticsWithIncompleteCategories();
         
         when(assessmentMatrixService.findById(ASSESSMENT_MATRIX_ID)).thenReturn(Optional.of(mockMatrix));
@@ -864,8 +864,8 @@ class DashboardAnalyticsRequestHandlerTest {
                 .build();
     }
 
-    private AssessmentMatrix createMockAssessmentMatrix() {
-        return AssessmentMatrix.builder()
+    private AssessmentMatrixV2 createMockAssessmentMatrix() {
+        return AssessmentMatrixV2.builder()
                 .id(ASSESSMENT_MATRIX_ID)
                 .name("Test Assessment Matrix")
                 .description("Test Description")

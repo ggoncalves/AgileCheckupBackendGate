@@ -5,9 +5,9 @@ import com.agilecheckup.gate.dto.DashboardAnalyticsOverviewResponse;
 import com.agilecheckup.gate.dto.DashboardAnalyticsTeamResponse;
 import com.agilecheckup.gate.dto.PerformanceCycleSummaryResponse;
 import com.agilecheckup.persistency.entity.AnalyticsScope;
-import com.agilecheckup.persistency.entity.AssessmentMatrix;
+import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
 import com.agilecheckup.persistency.entity.DashboardAnalytics;
-import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.agilecheckup.service.DashboardAnalyticsService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -29,12 +29,12 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     private static final Pattern PERFORMANCE_CYCLE_SUMMARY_PATTERN = Pattern.compile("^/performance-cycle-summary/([^/]+)/?$");
 
     private final DashboardAnalyticsService dashboardAnalyticsService;
-    private final AssessmentMatrixService assessmentMatrixService;
+    private final AssessmentMatrixServiceV2 assessmentMatrixService;
     private final ObjectMapper objectMapper;
 
     public DashboardAnalyticsRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
         this.dashboardAnalyticsService = serviceComponent.buildDashboardAnalyticsService();
-        this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+        this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixServiceV2();
         this.objectMapper = objectMapper;
     }
 
@@ -100,9 +100,6 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return ResponseBuilder.buildResponse(400, "Missing required parameter: tenantId");
             }
 
-            // Log the request
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Computing analytics for assessmentMatrixId=" + assessmentMatrixId + ", tenantId=" + tenantId);
-
             // First, verify tenant access by checking the assessment matrix
             APIGatewayProxyResponseEvent accessCheck = verifyTenantAccess(assessmentMatrixId, tenantId, context);
             if (accessCheck != null) {
@@ -110,9 +107,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
             }
 
             // Trigger analytics computation
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Starting analytics computation for assessmentMatrixId=" + assessmentMatrixId);
             dashboardAnalyticsService.updateAssessmentMatrixAnalytics(assessmentMatrixId);
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Successfully completed analytics computation for assessmentMatrixId=" + assessmentMatrixId);
 
             // Return success response
             Map<String, Object> response = Map.of(
@@ -146,9 +141,6 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return ResponseBuilder.buildResponse(400, "Missing required parameter: tenantId");
             }
 
-            // Log the request
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Getting overview for assessmentMatrixId=" + assessmentMatrixId + ", tenantId=" + tenantId);
-
             // First, verify tenant access by checking the assessment matrix
             APIGatewayProxyResponseEvent accessCheck = verifyTenantAccess(assessmentMatrixId, tenantId, context);
             if (accessCheck != null) {
@@ -158,9 +150,6 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
             Optional<DashboardAnalytics> overviewOpt = dashboardAnalyticsService.getOverview(assessmentMatrixId);
             
             if (overviewOpt.isEmpty()) {
-                // Log the empty result - this is normal when analytics haven't been generated yet
-                context.getLogger().log("DashboardAnalyticsRequestHandler: No analytics found for assessmentMatrixId=" + assessmentMatrixId + ". Returning empty response.");
-                
                 // Return empty analytics response (tenant access already verified)
                 DashboardAnalyticsOverviewResponse emptyResponse = buildEmptyOverviewResponse(assessmentMatrixId, tenantId);
                 return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(emptyResponse));
@@ -168,13 +157,8 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
 
             DashboardAnalytics overview = overviewOpt.get();
             
-            // Log successful data retrieval
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Found overview analytics for assessmentMatrixId=" + assessmentMatrixId + 
-                ", companyId=" + overview.getCompanyId() + ", teamId=" + overview.getTeamId());
-            
             // Get all analytics for teams
             List<DashboardAnalytics> allAnalytics = dashboardAnalyticsService.getAllAnalytics(assessmentMatrixId);
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Retrieved " + allAnalytics.size() + " analytics records for all teams");
             
             DashboardAnalyticsOverviewResponse response = buildOverviewResponse(overview, allAnalytics);
             
@@ -202,10 +186,6 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return ResponseBuilder.buildResponse(400, "Missing required parameter: tenantId");
             }
 
-            // Log the request
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Getting team analytics for assessmentMatrixId=" + assessmentMatrixId + 
-                ", teamId=" + teamId + ", tenantId=" + tenantId);
-
             // First, verify tenant access by checking the assessment matrix
             APIGatewayProxyResponseEvent accessCheck = verifyTenantAccess(assessmentMatrixId, tenantId, context);
             if (accessCheck != null) {
@@ -215,20 +195,12 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
             Optional<DashboardAnalytics> teamAnalyticsOpt = dashboardAnalyticsService.getTeamAnalytics(assessmentMatrixId, teamId);
             
             if (teamAnalyticsOpt.isEmpty()) {
-                // Log the empty result - this is normal when analytics haven't been generated yet
-                context.getLogger().log("DashboardAnalyticsRequestHandler: No team analytics found for assessmentMatrixId=" + assessmentMatrixId + 
-                    ", teamId=" + teamId + ". Returning empty response.");
-                
                 // Return empty team analytics response (tenant access already verified)
                 DashboardAnalyticsTeamResponse emptyResponse = buildEmptyTeamResponse(assessmentMatrixId, teamId, tenantId);
                 return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(emptyResponse));
             }
 
             DashboardAnalytics teamAnalytics = teamAnalyticsOpt.get();
-            
-            // Log successful data retrieval
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Found team analytics for assessmentMatrixId=" + assessmentMatrixId + 
-                ", teamId=" + teamId + ", companyId=" + teamAnalytics.getCompanyId());
 
             DashboardAnalyticsTeamResponse response = buildTeamResponse(teamAnalytics);
             
@@ -509,24 +481,19 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     private APIGatewayProxyResponseEvent verifyTenantAccess(String assessmentMatrixId, String tenantId, Context context) {
         try {
             // Get the assessment matrix to verify tenant access
-            Optional<AssessmentMatrix> matrixOpt = assessmentMatrixService.findById(assessmentMatrixId);
+            Optional<AssessmentMatrixV2> matrixOpt = assessmentMatrixService.findById(assessmentMatrixId);
             
             if (matrixOpt.isEmpty()) {
                 context.getLogger().log("DashboardAnalyticsRequestHandler: Assessment matrix not found: " + assessmentMatrixId);
                 return ResponseBuilder.buildResponse(404, "Assessment matrix not found");
             }
             
-            AssessmentMatrix matrix = matrixOpt.get();
+            AssessmentMatrixV2 matrix = matrixOpt.get();
             
             // Verify that the tenant ID matches the company ID (tenant) of the assessment matrix
             if (!tenantId.equals(matrix.getTenantId())) {
-                context.getLogger().log("DashboardAnalyticsRequestHandler: Access denied - tenantId=" + tenantId + 
-                    " does not match matrix tenantId=" + matrix.getTenantId() + " for assessmentMatrixId=" + assessmentMatrixId);
                 return ResponseBuilder.buildResponse(403, "Access denied to this assessment matrix");
             }
-            
-            context.getLogger().log("DashboardAnalyticsRequestHandler: Tenant access verified - tenantId=" + tenantId + 
-                " matches matrix tenantId=" + matrix.getTenantId() + " for assessmentMatrixId=" + assessmentMatrixId);
             
             return null; // Access allowed
             

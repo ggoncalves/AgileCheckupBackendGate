@@ -3,8 +3,8 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.persistency.entity.TeamV2;
-import com.agilecheckup.service.DepartmentService;
-import com.agilecheckup.service.TeamService;
+import com.agilecheckup.service.DepartmentServiceV2;
+import com.agilecheckup.service.TeamServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -16,11 +16,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.contains;
 import static org.mockito.Mockito.doReturn;
@@ -37,10 +40,10 @@ class TeamRequestHandlerTest {
   private ServiceComponent serviceComponent;
 
   @Mock
-  private TeamService teamService;
+  private TeamServiceV2 teamService;
 
   @Mock
-  private DepartmentService departmentService;
+  private DepartmentServiceV2 departmentService;
 
   @Mock
   private Context context;

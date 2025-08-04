@@ -3,7 +3,6 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.EmployeeAssessment;
 import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
-import com.agilecheckup.service.EmployeeAssessmentService;
 import com.agilecheckup.service.EmployeeAssessmentServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;

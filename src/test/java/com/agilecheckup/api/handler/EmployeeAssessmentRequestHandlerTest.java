@@ -1,12 +1,11 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.EmployeeAssessment;
-import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
 import com.agilecheckup.persistency.entity.EmployeeAssessmentScore;
-import com.agilecheckup.persistency.entity.person.NaturalPerson;
+import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
 import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
+import com.agilecheckup.persistency.entity.person.NaturalPerson;
 import com.agilecheckup.persistency.entity.person.PersonDocumentType;
 import com.agilecheckup.service.EmployeeAssessmentServiceV2;
 import com.agilecheckup.service.dto.EmployeeValidationRequest;
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,12 +29,13 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 

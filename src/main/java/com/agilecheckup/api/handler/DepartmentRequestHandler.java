@@ -1,11 +1,11 @@
 package com.agilecheckup.api.handler;
 
+import com.agilecheckup.service.DepartmentServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
-  private final DepartmentService departmentService;
+  private final DepartmentServiceV2 departmentService;
   private final ObjectMapper objectMapper;
 
   // Regex patterns for path matching

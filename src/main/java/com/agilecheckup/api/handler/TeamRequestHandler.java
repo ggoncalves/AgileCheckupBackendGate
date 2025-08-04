@@ -4,8 +4,8 @@ import com.agilecheckup.api.model.TeamResponse;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.persistency.entity.TeamV2;
-import com.agilecheckup.service.DepartmentService;
-import com.agilecheckup.service.TeamService;
+import com.agilecheckup.service.DepartmentServiceV2;
+import com.agilecheckup.service.TeamServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -22,8 +22,8 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/teams/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/teams/([^/]+)/?$");
-  private final TeamService teamService;
-  private final DepartmentService departmentService;
+  private final TeamServiceV2 teamService;
+  private final DepartmentServiceV2 departmentService;
   private final ObjectMapper objectMapper;
 
   public TeamRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {

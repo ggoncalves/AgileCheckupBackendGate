@@ -6,7 +6,7 @@ import com.agilecheckup.persistency.entity.CompanySize;
 import com.agilecheckup.persistency.entity.Industry;
 import com.agilecheckup.persistency.entity.person.AddressV2;
 import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
-import com.agilecheckup.service.CompanyService;
+import com.agilecheckup.service.CompanyServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -39,7 +39,7 @@ class CompanyRequestHandlerTest {
   private ServiceComponent serviceComponent;
 
   @Mock
-  private CompanyService companyService;
+  private CompanyServiceV2 companyService;
 
   @Mock
   private Context context;

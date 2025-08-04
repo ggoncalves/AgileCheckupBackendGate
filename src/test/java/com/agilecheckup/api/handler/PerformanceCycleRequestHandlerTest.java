@@ -2,7 +2,7 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycleV2;
-import com.agilecheckup.service.PerformanceCycleService;
+import com.agilecheckup.service.PerformanceCycleServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -37,7 +37,7 @@ class PerformanceCycleRequestHandlerTest {
     private ServiceComponent mockServiceComponent;
 
     @Mock
-    private PerformanceCycleService mockPerformanceCycleService;
+    private PerformanceCycleServiceV2 mockPerformanceCycleService;
 
     @Mock
     private Context mockContext;

@@ -11,7 +11,7 @@ import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
 import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
 import com.agilecheckup.persistency.entity.person.PersonDocumentType;
-import com.agilecheckup.service.CompanyService;
+import com.agilecheckup.service.CompanyServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -26,7 +26,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/companies/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/companies/([^/]+)/?$");
-  private final CompanyService companyService;
+  private final CompanyServiceV2 companyService;
   private final ObjectMapper objectMapper;
 
   public CompanyRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {

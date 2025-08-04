@@ -2,7 +2,7 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycleV2;
-import com.agilecheckup.service.PerformanceCycleService;
+import com.agilecheckup.service.PerformanceCycleServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -20,7 +20,7 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/performancecycles/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/performancecycles/([^/]+)/?$");
-  private final PerformanceCycleService performanceCycleService;
+  private final PerformanceCycleServiceV2 performanceCycleService;
   private final ObjectMapper objectMapper;
 
   public PerformanceCycleRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {

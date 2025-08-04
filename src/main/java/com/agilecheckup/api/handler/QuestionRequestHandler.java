@@ -4,7 +4,7 @@ import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
 import com.agilecheckup.persistency.entity.question.QuestionV2;
 import com.agilecheckup.persistency.entity.question.QuestionOption;
-import com.agilecheckup.service.AssessmentNavigationService;
+import com.agilecheckup.service.AssessmentNavigationServiceV2;
 import com.agilecheckup.service.QuestionServiceV2;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -28,12 +28,12 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   private static final Pattern GET_NEXT_QUESTION_PATTERN = Pattern.compile("^/questions/next/?$");
 
   private final QuestionServiceV2 questionService;
-  private final AssessmentNavigationService assessmentNavigationService;
+  private final AssessmentNavigationServiceV2 assessmentNavigationService;
   private final ObjectMapper objectMapper;
 
   public QuestionRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     this.questionService = serviceComponent.buildQuestionServiceV2();
-    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationService();
+    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationServiceV2();
     this.objectMapper = objectMapper;
   }
 

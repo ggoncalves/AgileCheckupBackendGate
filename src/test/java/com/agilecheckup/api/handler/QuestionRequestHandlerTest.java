@@ -2,10 +2,10 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
-import com.agilecheckup.persistency.entity.question.Answer;
+import com.agilecheckup.persistency.entity.question.AnswerV2;
 import com.agilecheckup.persistency.entity.question.QuestionV2;
 import com.agilecheckup.persistency.entity.question.QuestionOption;
-import com.agilecheckup.service.AssessmentNavigationService;
+import com.agilecheckup.service.AssessmentNavigationServiceV2;
 import com.agilecheckup.service.QuestionServiceV2;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -48,7 +48,7 @@ class QuestionRequestHandlerTest {
     private QuestionServiceV2 questionService;
 
     @Mock
-    private AssessmentNavigationService assessmentNavigationService;
+    private AssessmentNavigationServiceV2 assessmentNavigationService;
 
     @Mock
     private Context context;
@@ -65,7 +65,7 @@ class QuestionRequestHandlerTest {
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
         lenient().doReturn(questionService).when(serviceComponent).buildQuestionServiceV2();
-        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationService();
+        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationServiceV2();
         lenient().doReturn(lambdaLogger).when(context).getLogger();
         handler = new QuestionRequestHandler(serviceComponent, objectMapper);
     }
@@ -556,7 +556,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        com.agilecheckup.persistency.entity.question.Question nextQuestion = com.agilecheckup.persistency.entity.question.Question.builder()
+        QuestionV2 nextQuestion = QuestionV2.builder()
                 .id("q-123")
                 .question("What is your experience with agile?")
                 .questionType(QuestionType.YES_NO)
@@ -568,7 +568,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Experience")
                 .build();
 
-        Answer existingAnswer = Answer.builder()
+        AnswerV2 existingAnswer = AnswerV2.builder()
                 .id("a-123")
                 .questionId("q-123")
                 .employeeAssessmentId(employeeAssessmentId)

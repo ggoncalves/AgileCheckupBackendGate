@@ -1,7 +1,6 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.EmployeeAssessment;
 import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
 import com.agilecheckup.service.EmployeeAssessmentServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -115,7 +114,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     Optional<EmployeeAssessmentV2> v2Assessment = employeeAssessmentServiceV2.findById(id, tenantId);
 
     if (v2Assessment.isPresent()) {
-      EmployeeAssessment v1Assessment = adaptV2ToV1(v2Assessment.get());
+      EmployeeAssessmentV2 v1Assessment = adaptV2ToV1(v2Assessment.get());
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Assessment));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found");
@@ -124,7 +123,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
 
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     try {
-      EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
+      EmployeeAssessmentV2 employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessmentV2.class);
       
       // Validate required fields
       if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
@@ -160,7 +159,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       );
       
       if (createdV2.isPresent()) {
-        EmployeeAssessment created = adaptV2ToV1(createdV2.get());
+        EmployeeAssessmentV2 created = adaptV2ToV1(createdV2.get());
         return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
       } else {
         return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
@@ -174,7 +173,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
 
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
-    EmployeeAssessment employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessment.class);
+    EmployeeAssessmentV2 employeeAssessment = objectMapper.readValue(requestBody, EmployeeAssessmentV2.class);
     
     // Validate required fields
     if (employeeAssessment.getTenantId() == null || employeeAssessment.getTenantId().isEmpty()) {
@@ -195,7 +194,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     );
     
     if (updatedV2.isPresent()) {
-      EmployeeAssessment updated = adaptV2ToV1(updatedV2.get());
+      EmployeeAssessmentV2 updated = adaptV2ToV1(updatedV2.get());
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(updated));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
@@ -209,7 +208,7 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     EmployeeAssessmentV2 v2Assessment = employeeAssessmentServiceV2.updateEmployeeAssessmentScore(id, tenantId);
 
     if (v2Assessment != null) {
-      EmployeeAssessment v1Assessment = adaptV2ToV1(v2Assessment);
+      EmployeeAssessmentV2 v1Assessment = adaptV2ToV1(v2Assessment);
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(v1Assessment));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
@@ -303,29 +302,30 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
   }
   
   /**
-   * Convert V2 entity to V1 entity for API compatibility
+   * Convert V2 entity to V2 entity for API compatibility
    */
-  private EmployeeAssessment adaptV2ToV1(EmployeeAssessmentV2 v2) {
+  private EmployeeAssessmentV2 adaptV2ToV1(EmployeeAssessmentV2 v2) {
     if (v2 == null) return null;
     
-    EmployeeAssessment v1 = new EmployeeAssessment();
-    v1.setId(v2.getId());
+    EmployeeAssessmentV2 v1 = EmployeeAssessmentV2.builder()
+        .id(v2.getId())
+        .assessmentMatrixId(v2.getAssessmentMatrixId())
+        .employee(v2.getEmployee())
+        .teamId(v2.getTeamId())
+        .employeeAssessmentScore(v2.getEmployeeAssessmentScore())
+        .assessmentStatus(v2.getAssessmentStatus())
+        .answeredQuestionCount(v2.getAnsweredQuestionCount())
+        .employeeEmailNormalized(v2.getEmployeeEmailNormalized())
+        .lastActivityDate(v2.getLastActivityDate())
+        .build();
     v1.setTenantId(v2.getTenantId());
-    v1.setAssessmentMatrixId(v2.getAssessmentMatrixId());
-    v1.setEmployee(v2.getEmployee());
-    v1.setTeamId(v2.getTeamId());
-    v1.setEmployeeAssessmentScore(v2.getEmployeeAssessmentScore());
-    v1.setAssessmentStatus(v2.getAssessmentStatus());
-    v1.setAnsweredQuestionCount(v2.getAnsweredQuestionCount());
-    v1.setEmployeeEmailNormalized(v2.getEmployeeEmailNormalized());
-    v1.setLastActivityDate(v2.getLastActivityDate());
     return v1;
   }
   
   /**
-   * Convert V1 entity to V2 entity for service calls
+   * Convert V2 entity to V2 entity for service calls
    */
-  private EmployeeAssessmentV2 adaptV1ToV2(EmployeeAssessment v1) {
+  private EmployeeAssessmentV2 adaptV1ToV2(EmployeeAssessmentV2 v1) {
     if (v1 == null) return null;
     
     EmployeeAssessmentV2 v2 = EmployeeAssessmentV2.builder()

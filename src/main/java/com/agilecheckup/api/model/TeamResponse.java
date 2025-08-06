@@ -1,7 +1,6 @@
 package com.agilecheckup.api.model;
 
 import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.persistency.entity.Team;
 import com.agilecheckup.persistency.entity.TeamV2;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,17 +37,4 @@ public class TeamResponse {
                 .build();
     }
     
-    // Legacy support for Team (V1) entities
-    public static TeamResponse fromTeam(Team team, DepartmentV2 department) {
-        return TeamResponse.builder()
-                .id(team.getId())
-                .createdDate(team.getCreatedDate() != null ? team.getCreatedDate().toInstant() : null)
-                .lastUpdatedDate(team.getLastUpdatedDate() != null ? team.getLastUpdatedDate().toInstant() : null)
-                .tenantId(team.getTenantId())
-                .name(team.getName())
-                .description(team.getDescription())
-                .departmentId(team.getDepartmentId())
-                .department(department)
-                .build();
-    }
 }

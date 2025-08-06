@@ -10,7 +10,6 @@ import com.agilecheckup.api.model.CategoryApiV2;
 import com.agilecheckup.api.model.PillarApiV2;
 import com.agilecheckup.persistency.entity.*;
 import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
-import com.agilecheckup.service.AssessmentMatrixService;
 import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -18,21 +17,21 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
+import java.util.Collections;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrix> {
+public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrixV2> {
 
   private static final Pattern UPDATE_POTENTIAL_SCORE_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/potentialscore/?$");
   private static final Pattern DASHBOARD_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/dashboard/?$");
 
-  private final AssessmentMatrixService assessmentMatrixService;
   private final AssessmentMatrixServiceV2 assessmentMatrixServiceV2;
   private final CacheManager cacheManager;
 
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     super(objectMapper, "assessmentmatrices");
-    this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    // Using V2 service directly through assessmentMatrixServiceV2
     this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
     this.cacheManager = new CacheManager(); // Simple instantiation for now - to be fixed later
   }
@@ -40,7 +39,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   // Constructor for testing with mocked cache manager
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper, CacheManager cacheManager) {
     super(objectMapper, "assessmentmatrices");
-    this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
+    // Using V2 service directly through assessmentMatrixServiceV2
     this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
     this.cacheManager = cacheManager;
   }
@@ -333,31 +332,9 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
    * Converts domain DTO to presentation DTO with pagination support.
    */
   private DashboardResponse convertToDashboardResponse(com.agilecheckup.service.dto.AssessmentDashboardData dashboardData, int page, int pageSize) {
-    // Convert team summaries (no pagination needed for teams)
-    List<TeamSummary> teamSummaries = dashboardData.getTeamSummaries().stream()
-        .map(ts -> TeamSummary.builder()
-            .teamId(ts.getTeamId())
-            .teamName(ts.getTeamName())
-            .totalEmployees(ts.getTotalEmployees())
-            .completedAssessments(ts.getCompletedAssessments())
-            .completionPercentage(ts.getCompletionPercentage())
-            .averageScore(ts.getAverageScore())
-            .build())
-        .collect(Collectors.toList());
-
-    // Apply pagination to employee summaries
-    List<EmployeeAssessmentDetail> allEmployeeDetails = dashboardData.getEmployeeSummaries().stream()
-        .map(es -> EmployeeAssessmentDetail.builder()
-            .employeeAssessmentId(es.getEmployeeAssessmentId())
-            .employeeName(es.getEmployeeName())
-            .employeeEmail(es.getEmployeeEmail())
-            .teamId(es.getTeamId())
-            .status(es.getAssessmentStatus() != null ? es.getAssessmentStatus().name() : "UNKNOWN")
-            .currentScore(es.getCurrentScore())
-            .answeredQuestions(es.getAnsweredQuestions())
-            .lastActivityDate(es.getLastActivityDate())
-            .build())
-        .collect(Collectors.toList());
+    // Convert V2 summaries to presentation DTOs
+    List<TeamSummary> teamSummaries = convertTeamSummaries(dashboardData.getTeamSummaries());
+    List<EmployeeAssessmentDetail> allEmployeeDetails = convertEmployeeSummaries(dashboardData.getEmployeeSummaries());
 
     // Apply pagination
     int totalEmployees = allEmployeeDetails.size();
@@ -473,6 +450,62 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
         .description(category.getDescription())
         .createdDate(category.getCreatedDate() != null ? category.getCreatedDate().toString() : null)
         .lastUpdatedDate(category.getLastUpdatedDate() != null ? category.getLastUpdatedDate().toString() : null)
+        .build();
+  }
+
+  /**
+   * Converts V2 team summaries to presentation DTOs
+   */
+  private List<TeamSummary> convertTeamSummaries(List<com.agilecheckup.service.dto.TeamAssessmentSummaryV2> teamSummariesV2) {
+    if (teamSummariesV2 == null) {
+      return Collections.emptyList();
+    }
+    
+    return teamSummariesV2.stream()
+        .map(this::convertTeamSummary)
+        .collect(java.util.stream.Collectors.toList());
+  }
+  
+  /**
+   * Converts V2 employee summaries to presentation DTOs
+   */
+  private List<EmployeeAssessmentDetail> convertEmployeeSummaries(List<com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2> employeeSummariesV2) {
+    if (employeeSummariesV2 == null) {
+      return Collections.emptyList();
+    }
+    
+    return employeeSummariesV2.stream()
+        .map(this::convertEmployeeSummary)
+        .collect(java.util.stream.Collectors.toList());
+  }
+  
+  /**
+   * Converts a single V2 team summary to presentation DTO
+   */
+  private TeamSummary convertTeamSummary(com.agilecheckup.service.dto.TeamAssessmentSummaryV2 teamSummaryV2) {
+    return TeamSummary.builder()
+        .teamId(teamSummaryV2.getTeamId())
+        .teamName(teamSummaryV2.getTeamName())
+        .totalEmployees(teamSummaryV2.getTotalEmployees())
+        .completedAssessments(teamSummaryV2.getCompletedAssessments())
+        .completionPercentage(teamSummaryV2.getCompletionPercentage())
+        .averageScore(teamSummaryV2.getAverageScore())
+        .build();
+  }
+  
+  /**
+   * Converts a single V2 employee summary to presentation DTO
+   */
+  private EmployeeAssessmentDetail convertEmployeeSummary(com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2 employeeSummaryV2) {
+    return EmployeeAssessmentDetail.builder()
+        .employeeAssessmentId(employeeSummaryV2.getEmployeeAssessmentId())
+        .employeeName(employeeSummaryV2.getEmployeeName())
+        .employeeEmail(employeeSummaryV2.getEmployeeEmail())
+        .teamId(employeeSummaryV2.getTeamId())
+        .status(employeeSummaryV2.getAssessmentStatus() != null ? employeeSummaryV2.getAssessmentStatus().toString() : null)
+        .answeredQuestions(employeeSummaryV2.getAnsweredQuestionCount())
+        .currentScore(employeeSummaryV2.getCurrentScore())
+        .lastActivityDate(employeeSummaryV2.getLastActivityDate())
         .build();
   }
 

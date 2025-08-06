@@ -1,7 +1,7 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.service.DepartmentServiceV2;
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
 import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
@@ -63,23 +63,21 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments")
                 .withHttpMethod("GET");
 
-        Department dept1 = Department.builder()
-                .id("dept-1")
-                .name("Engineering")
-                .description("Engineering department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 dept1 = new DepartmentV2();
+        dept1.setId("dept-1");
+        dept1.setName("Engineering");
+        dept1.setDescription("Engineering department");
+        dept1.setTenantId("tenant-123");
+        dept1.setCompanyId("company-123");
 
-        Department dept2 = Department.builder()
-                .id("dept-2")
-                .name("Sales")
-                .description("Sales department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 dept2 = new DepartmentV2();
+        dept2.setId("dept-2");
+        dept2.setName("Sales");
+        dept2.setDescription("Sales department");
+        dept2.setTenantId("tenant-123");
+        dept2.setCompanyId("company-123");
 
-        PaginatedScanList<Department> departments = mock(PaginatedScanList.class);
+        PaginatedScanList<DepartmentV2> departments = mock(PaginatedScanList.class);
         doReturn(Arrays.asList(dept1, dept2).iterator()).when(departments).iterator();
         doReturn(departments).when(departmentService).findAll();
 
@@ -104,15 +102,14 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        Department dept1 = Department.builder()
-                .id("dept-1")
-                .name("Engineering")
-                .description("Engineering department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 dept1 = new DepartmentV2();
+        dept1.setId("dept-1");
+        dept1.setName("Engineering");
+        dept1.setDescription("Engineering department");
+        dept1.setTenantId("tenant-123");
+        dept1.setCompanyId("company-123");
 
-        PaginatedQueryList<Department> departments = mock(PaginatedQueryList.class);
+        PaginatedQueryList<DepartmentV2> departments = mock(PaginatedQueryList.class);
         doReturn(Arrays.asList(dept1).iterator()).when(departments).iterator();
         doReturn(departments).when(departmentService).findAllByTenantId("tenant-123");
 
@@ -134,13 +131,12 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments/" + departmentId)
                 .withHttpMethod("GET");
 
-        Department department = Department.builder()
-                .id(departmentId)
-                .name("Engineering")
-                .description("Engineering department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 department = new DepartmentV2();
+        department.setId(departmentId);
+        department.setName("Engineering");
+        department.setDescription("Engineering department");
+        department.setTenantId("tenant-123");
+        department.setCompanyId("company-123");
 
         doReturn(Optional.of(department)).when(departmentService).findById(departmentId);
 
@@ -188,13 +184,12 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        Department createdDepartment = Department.builder()
-                .id("new-dept-id")
-                .name("Engineering")
-                .description("Engineering department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 createdDepartment = new DepartmentV2();
+        createdDepartment.setId("new-dept-id");
+        createdDepartment.setName("Engineering");
+        createdDepartment.setDescription("Engineering department");
+        createdDepartment.setTenantId("tenant-123");
+        createdDepartment.setCompanyId("company-123");
 
         doReturn(Optional.of(createdDepartment)).when(departmentService).create(
                 eq("Engineering"),
@@ -259,13 +254,12 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        Department updatedDepartment = Department.builder()
-                .id(departmentId)
-                .name("Updated Engineering")
-                .description("Updated description")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 updatedDepartment = new DepartmentV2();
+        updatedDepartment.setId(departmentId);
+        updatedDepartment.setName("Updated Engineering");
+        updatedDepartment.setDescription("Updated description");
+        updatedDepartment.setTenantId("tenant-123");
+        updatedDepartment.setCompanyId("company-123");
 
         doReturn(Optional.of(updatedDepartment)).when(departmentService).update(
                 eq(departmentId),
@@ -324,13 +318,12 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments/" + departmentId)
                 .withHttpMethod("DELETE");
 
-        Department department = Department.builder()
-                .id(departmentId)
-                .name("Engineering")
-                .description("Engineering department")
-                .tenantId("tenant-123")
-                .companyId("company-123")
-                .build();
+        DepartmentV2 department = new DepartmentV2();
+        department.setId(departmentId);
+        department.setName("Engineering");
+        department.setDescription("Engineering department");
+        department.setTenantId("tenant-123");
+        department.setCompanyId("company-123");
 
         doReturn(Optional.of(department)).when(departmentService).findById(departmentId);
 

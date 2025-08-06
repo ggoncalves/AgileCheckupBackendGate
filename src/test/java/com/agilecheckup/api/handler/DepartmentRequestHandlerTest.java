@@ -3,8 +3,6 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.DepartmentV2;
 import com.agilecheckup.service.DepartmentServiceV2;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -77,9 +75,7 @@ class DepartmentRequestHandlerTest {
         dept2.setTenantId("tenant-123");
         dept2.setCompanyId("company-123");
 
-        PaginatedScanList<DepartmentV2> departments = mock(PaginatedScanList.class);
-        doReturn(Arrays.asList(dept1, dept2).iterator()).when(departments).iterator();
-        doReturn(departments).when(departmentService).findAll();
+        doReturn(Arrays.asList(dept1, dept2)).when(departmentService).findAll();
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -109,9 +105,7 @@ class DepartmentRequestHandlerTest {
         dept1.setTenantId("tenant-123");
         dept1.setCompanyId("company-123");
 
-        PaginatedQueryList<DepartmentV2> departments = mock(PaginatedQueryList.class);
-        doReturn(Arrays.asList(dept1).iterator()).when(departments).iterator();
-        doReturn(departments).when(departmentService).findAllByTenantId("tenant-123");
+        doReturn(Arrays.asList(dept1)).when(departmentService).findAllByTenantId("tenant-123");
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);

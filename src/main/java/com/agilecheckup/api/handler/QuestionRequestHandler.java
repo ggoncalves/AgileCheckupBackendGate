@@ -2,8 +2,8 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
+import com.agilecheckup.persistency.entity.question.QuestionOptionV2;
 import com.agilecheckup.persistency.entity.question.QuestionV2;
-import com.agilecheckup.persistency.entity.question.QuestionOption;
 import com.agilecheckup.service.AssessmentNavigationServiceV2;
 import com.agilecheckup.service.QuestionServiceV2;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
@@ -157,9 +157,9 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
     // Convert options list
-    List<QuestionOption> options = objectMapper.convertValue(
+    List<QuestionOptionV2> options = objectMapper.convertValue(
         requestMap.get("options"),
-        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
+        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOptionV2.class)
     );
 
     Optional<QuestionV2> question = questionService.createCustomQuestion(
@@ -214,9 +214,9 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
     // Convert options list
-    List<QuestionOption> options = objectMapper.convertValue(
+    List<QuestionOptionV2> options = objectMapper.convertValue(
         requestMap.get("options"),
-        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
+        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOptionV2.class)
     );
 
     Optional<QuestionV2> question = questionService.updateCustomQuestion(

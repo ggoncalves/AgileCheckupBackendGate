@@ -1,11 +1,11 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.EmployeeAssessmentScore;
+import com.agilecheckup.persistency.entity.EmployeeAssessmentScoreV2;
 import com.agilecheckup.persistency.entity.EmployeeAssessmentV2;
 import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
-import com.agilecheckup.persistency.entity.person.NaturalPerson;
+import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
 import com.agilecheckup.persistency.entity.person.PersonDocumentType;
 import com.agilecheckup.service.EmployeeAssessmentServiceV2;
 import com.agilecheckup.service.dto.EmployeeValidationRequest;
@@ -78,7 +78,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment1 = EmployeeAssessmentV2.builder()
                 .id("ea-1")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)
@@ -91,7 +91,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment2 = EmployeeAssessmentV2.builder()
                 .id("ea-2")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("jane.smith@example.com")
                         .name("Jane Smith")
                         .gender(Gender.FEMALE)
@@ -129,7 +129,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment = EmployeeAssessmentV2.builder()
                 .id(assessmentId)
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)
@@ -175,7 +175,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 createdAssessment = EmployeeAssessmentV2.builder()
                 .id("new-ea-id")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)
@@ -226,7 +226,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 updatedAssessment = EmployeeAssessmentV2.builder()
                 .id(assessmentId)
                 .assessmentMatrixId("am-456")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.updated@example.com")
                         .name("John Updated")
                         .gender(Gender.MALE)
@@ -264,7 +264,7 @@ class EmployeeAssessmentRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        EmployeeAssessmentScore score = EmployeeAssessmentScore.builder()
+        EmployeeAssessmentScoreV2 score = EmployeeAssessmentScoreV2.builder()
                 .score(85.5)
                 .build();
 
@@ -272,7 +272,7 @@ class EmployeeAssessmentRequestHandlerTest {
                 .id(assessmentId)
                 .assessmentMatrixId("am-123")
                 .teamId("team-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)
@@ -327,7 +327,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment = EmployeeAssessmentV2.builder()
                 .id(assessmentId)
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)
@@ -392,7 +392,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 createdAssessment = EmployeeAssessmentV2.builder()
                 .id("new-ea-id")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(null)
@@ -493,7 +493,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment1 = EmployeeAssessmentV2.builder()
                 .id("ea-1")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .build())
@@ -504,7 +504,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment2 = EmployeeAssessmentV2.builder()
                 .id("ea-2")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("jane.smith@example.com")
                         .name("Jane Smith")
                         .build())
@@ -540,7 +540,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment = EmployeeAssessmentV2.builder()
                 .id("ea-1")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .build())
@@ -578,7 +578,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 assessment = EmployeeAssessmentV2.builder()
                 .id(assessmentId)
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .build())
@@ -890,7 +890,7 @@ class EmployeeAssessmentRequestHandlerTest {
         EmployeeAssessmentV2 createdAssessment = EmployeeAssessmentV2.builder()
                 .id("new-ea-id")
                 .assessmentMatrixId("am-123")
-                .employee(NaturalPerson.builder()
+                .employee(NaturalPersonV2.builder()
                         .email("john.doe@example.com")
                         .name("John Doe")
                         .gender(Gender.MALE)

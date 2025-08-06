@@ -1,25 +1,31 @@
 package com.agilecheckup.api.handler;
 
+import com.agilecheckup.api.model.CategoryApiV2;
+import com.agilecheckup.api.model.PillarApiV2;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
 import com.agilecheckup.gate.dto.DashboardResponse;
 import com.agilecheckup.gate.dto.EmployeeAssessmentDetail;
 import com.agilecheckup.gate.dto.EmployeePageResponse;
 import com.agilecheckup.gate.dto.TeamSummary;
-import com.agilecheckup.api.model.CategoryApiV2;
-import com.agilecheckup.api.model.PillarApiV2;
-import com.agilecheckup.persistency.entity.*;
+import com.agilecheckup.persistency.entity.AssessmentConfigurationV2;
 import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
+import com.agilecheckup.persistency.entity.CategoryV2;
+import com.agilecheckup.persistency.entity.PillarV2;
+import com.agilecheckup.persistency.entity.QuestionNavigationType;
 import com.agilecheckup.service.AssessmentMatrixServiceV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.*;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrixV2> {
 
@@ -103,7 +109,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
 
       // Create the assessment configuration if provided
-      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
+      AssessmentConfigurationV2 configuration = buildAssessmentConfiguration(requestMap);
 
       // Now create the assessment matrix with properly typed pillar map and configuration
       Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.create(
@@ -135,7 +141,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
       Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
 
       // Create the assessment configuration if provided
-      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
+      AssessmentConfigurationV2 configuration = buildAssessmentConfiguration(requestMap);
 
       Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.update(
           id,
@@ -158,8 +164,8 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     }
   }
 
-  private Map<String, Pillar> buildPillarMap(Map<String, Object> requestMap) {
-    Map<String, Pillar> pillarMap = new HashMap<>();
+  private Map<String, PillarV2> buildPillarMap(Map<String, Object> requestMap) {
+    Map<String, PillarV2> pillarMap = new HashMap<>();
     if (requestMap.containsKey("pillarMap") && requestMap.get("pillarMap") != null) {
       Map<String, Object> rawPillarMap = (Map<String, Object>) requestMap.get("pillarMap");
 
@@ -167,7 +173,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
         String pillarId = entry.getKey();
         Map<String, Object> pillarData = (Map<String, Object>) entry.getValue();
 
-        Map<String, Category> categoryMap = new HashMap<>();
+        Map<String, CategoryV2> categoryMap = new HashMap<>();
         if (pillarData.containsKey("categoryMap") && pillarData.get("categoryMap") != null) {
           Map<String, Object> rawCategoryMap = (Map<String, Object>) pillarData.get("categoryMap");
 
@@ -175,7 +181,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
             String categoryId = catEntry.getKey();
             Map<String, Object> categoryData = (Map<String, Object>) catEntry.getValue();
 
-            Category category = Category.builder()
+            CategoryV2 category = CategoryV2.builder()
                 .id(categoryId)
                 .name((String) categoryData.get("name"))
                 .description((String) categoryData.get("description"))
@@ -185,7 +191,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
           }
         }
 
-        Pillar pillar = Pillar.builder()
+        PillarV2 pillar = PillarV2.builder()
             .id(pillarId)
             .name((String) pillarData.get("name"))
             .description((String) pillarData.get("description"))
@@ -198,14 +204,14 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     return pillarMap;
   }
 
-  private AssessmentConfiguration buildAssessmentConfiguration(Map<String, Object> requestMap) {
+  private AssessmentConfigurationV2 buildAssessmentConfiguration(Map<String, Object> requestMap) {
     if (!hasConfiguration(requestMap)) {
       return null;
     }
 
     Map<String, Object> configData = extractConfigurationData(requestMap);
 
-    return AssessmentConfiguration.builder()
+    return AssessmentConfigurationV2.builder()
         .allowQuestionReview(getBooleanOrDefault(configData, "allowQuestionReview", true))
         .requireAllQuestions(getBooleanOrDefault(configData, "requireAllQuestions", true))
         .autoSave(getBooleanOrDefault(configData, "autoSave", true))

@@ -2,7 +2,7 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
-import com.agilecheckup.persistency.entity.person.NaturalPerson;
+import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ public class JacksonDeserializationTest {
                 "}";
 
         // When
-        NaturalPerson person = objectMapper.readValue(json, NaturalPerson.class);
+        NaturalPersonV2 person = objectMapper.readValue(json, NaturalPersonV2.class);
 
         // Then
         assertThat(person.getName()).isEqualTo("John Doe");
@@ -56,7 +56,7 @@ public class JacksonDeserializationTest {
                 "}";
 
         // When
-        NaturalPerson person = objectMapper.readValue(json, NaturalPerson.class);
+        NaturalPersonV2 person = objectMapper.readValue(json, NaturalPersonV2.class);
 
         // Then
         assertThat(person.getName()).isEqualTo("Jane Doe");
@@ -76,7 +76,7 @@ public class JacksonDeserializationTest {
                 "}";
 
         // When
-        NaturalPerson person = objectMapper.readValue(json, NaturalPerson.class);
+        NaturalPersonV2 person = objectMapper.readValue(json, NaturalPersonV2.class);
 
         // Then
         assertThat(person.getName()).isEqualTo("Alex Smith");
@@ -94,7 +94,7 @@ public class JacksonDeserializationTest {
                 "}";
 
         // When
-        NaturalPerson person = objectMapper.readValue(json, NaturalPerson.class);
+        NaturalPersonV2 person = objectMapper.readValue(json, NaturalPersonV2.class);
 
         // Then
         assertThat(person.getName()).isEqualTo("Sam Wilson");

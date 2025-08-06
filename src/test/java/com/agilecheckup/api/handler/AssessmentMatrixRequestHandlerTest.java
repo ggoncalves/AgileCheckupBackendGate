@@ -2,9 +2,14 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
-import com.agilecheckup.persistency.entity.*;
+import com.agilecheckup.persistency.entity.AssessmentConfigurationV2;
 import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
+import com.agilecheckup.persistency.entity.CategoryV2;
+import com.agilecheckup.persistency.entity.PillarV2;
+import com.agilecheckup.persistency.entity.QuestionNavigationType;
+import com.agilecheckup.persistency.entity.score.PotentialScoreV2;
 import com.agilecheckup.service.AssessmentMatrixServiceV2;
+import com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -18,12 +23,24 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentMatrixRequestHandlerTest {
@@ -41,7 +58,7 @@ class AssessmentMatrixRequestHandlerTest {
   private Context context;
 
   @Captor
-  ArgumentCaptor<AssessmentConfiguration> configurationCaptor;
+  ArgumentCaptor<AssessmentConfigurationV2> configurationCaptor;
 
   @Captor
   ArgumentCaptor<Map<String, PillarV2>> pillarMapCaptor;
@@ -251,7 +268,7 @@ class AssessmentMatrixRequestHandlerTest {
         anyMap(),
         configurationCaptor.capture());
 
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
     assertThat(capturedConfig.getRequireAllQuestions()).isTrue();
     assertThat(capturedConfig.getAutoSave()).isFalse();
@@ -299,7 +316,7 @@ class AssessmentMatrixRequestHandlerTest {
     verify(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isTrue(); // default
     assertThat(capturedConfig.getRequireAllQuestions()).isTrue(); // default
     assertThat(capturedConfig.getAutoSave()).isTrue(); // default
@@ -344,7 +361,7 @@ class AssessmentMatrixRequestHandlerTest {
     verify(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig).isNull(); // No configuration provided
 
     assertThat(response.getStatusCode()).isEqualTo(201);
@@ -389,7 +406,7 @@ class AssessmentMatrixRequestHandlerTest {
     verify(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), configurationCaptor.capture());
 
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.RANDOM); // fallback to default
 
     assertThat(response.getStatusCode()).isEqualTo(201);
@@ -443,7 +460,7 @@ class AssessmentMatrixRequestHandlerTest {
         anyMap(),
         configurationCaptor.capture());
 
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isTrue();
     assertThat(capturedConfig.getRequireAllQuestions()).isFalse();
     assertThat(capturedConfig.getAutoSave()).isTrue();
@@ -837,8 +854,8 @@ class AssessmentMatrixRequestHandlerTest {
   }
 
   // Employee summaries created for V2
-  private List<com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2> createLargeEmployeeSummaryList(int count) {
-    List<com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2> summaries = new ArrayList<>();
+  private List<EmployeeAssessmentSummaryV2> createLargeEmployeeSummaryList(int count) {
+    List<EmployeeAssessmentSummaryV2> summaries = new ArrayList<>();
 
     for (int i = 1; i <= count; i++) {
       summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2.builder()
@@ -860,8 +877,8 @@ class AssessmentMatrixRequestHandlerTest {
     return summaries;
   }
 
-  private com.agilecheckup.persistency.entity.score.PotentialScore createTestPotentialScore() {
-    return com.agilecheckup.persistency.entity.score.PotentialScore.builder()
+  private PotentialScoreV2 createTestPotentialScore() {
+    return PotentialScoreV2.builder()
         .score(100.0)
         .pillarIdToPillarScoreMap(new HashMap<>())
         .build();
@@ -970,7 +987,7 @@ class AssessmentMatrixRequestHandlerTest {
     assertThat(pillar2.getCategoryMap()).hasSize(1);
 
     // Verify configuration
-    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    AssessmentConfigurationV2 capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
     assertThat(capturedConfig.getRequireAllQuestions()).isTrue();
     assertThat(capturedConfig.getAutoSave()).isFalse();

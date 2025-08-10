@@ -1,9 +1,9 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.question.AnswerV2;
-import com.agilecheckup.service.AnswerServiceV2;
-import com.agilecheckup.service.AssessmentNavigationServiceV2;
+import com.agilecheckup.persistency.entity.question.Answer;
+import com.agilecheckup.service.AnswerService;
+import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -36,10 +36,10 @@ class AnswerRequestHandlerTest {
     private ServiceComponent serviceComponent;
 
     @Mock
-    private AnswerServiceV2 answerService;
+    private AnswerService answerService;
 
     @Mock
-    private AssessmentNavigationServiceV2 assessmentNavigationService;
+    private AssessmentNavigationService assessmentNavigationService;
 
     @Mock
     private Context context;
@@ -56,8 +56,8 @@ class AnswerRequestHandlerTest {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
-        lenient().doReturn(answerService).when(serviceComponent).buildAnswerServiceV2();
-        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationServiceV2();
+        lenient().doReturn(answerService).when(serviceComponent).buildAnswerService();
+        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationService();
         lenient().doReturn(lambdaLogger).when(context).getLogger();
         handler = new AnswerRequestHandler(serviceComponent, objectMapper);
     }
@@ -69,7 +69,7 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers")
                 .withHttpMethod("GET");
 
-        AnswerV2 answer1 = new AnswerV2();
+        Answer answer1 = new Answer();
         answer1.setId("answer-1");
         answer1.setQuestionId("q-1");
         answer1.setEmployeeAssessmentId("ea-1");
@@ -77,7 +77,7 @@ class AnswerRequestHandlerTest {
         answer1.setAnsweredAt(LocalDateTime.now());
         answer1.setTenantId("tenant-123");
 
-        AnswerV2 answer2 = new AnswerV2();
+        Answer answer2 = new Answer();
         answer2.setId("answer-2");
         answer2.setQuestionId("q-2");
         answer2.setEmployeeAssessmentId("ea-1");
@@ -85,7 +85,7 @@ class AnswerRequestHandlerTest {
         answer2.setAnsweredAt(LocalDateTime.now());
         answer2.setTenantId("tenant-123");
 
-        List<AnswerV2> answers = Arrays.asList(answer1, answer2);
+        List<Answer> answers = Arrays.asList(answer1, answer2);
         when(answerService.findAll()).thenReturn(answers);
 
         // When
@@ -106,7 +106,7 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers/" + answerId)
                 .withHttpMethod("GET");
 
-        AnswerV2 answer = new AnswerV2();
+        Answer answer = new Answer();
         answer.setId(answerId);
         answer.setQuestionId("q-1");
         answer.setEmployeeAssessmentId("ea-1");
@@ -138,7 +138,7 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        AnswerV2 answer1 = new AnswerV2();
+        Answer answer1 = new Answer();
         answer1.setId("answer-1");
         answer1.setQuestionId("q-1");
         answer1.setEmployeeAssessmentId(employeeAssessmentId);
@@ -146,7 +146,7 @@ class AnswerRequestHandlerTest {
         answer1.setAnsweredAt(LocalDateTime.now());
         answer1.setTenantId(tenantId);
 
-        AnswerV2 answer2 = new AnswerV2();
+        Answer answer2 = new Answer();
         answer2.setId("answer-2");
         answer2.setQuestionId("q-2");
         answer2.setEmployeeAssessmentId(employeeAssessmentId);
@@ -154,7 +154,7 @@ class AnswerRequestHandlerTest {
         answer2.setAnsweredAt(LocalDateTime.now());
         answer2.setTenantId(tenantId);
 
-        List<AnswerV2> answers = Arrays.asList(answer1, answer2);
+        List<Answer> answers = Arrays.asList(answer1, answer2);
         when(answerService.findByEmployeeAssessmentId(employeeAssessmentId, tenantId)).thenReturn(answers);
 
         // When
@@ -200,7 +200,7 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        AnswerV2 createdAnswer = new AnswerV2();
+        Answer createdAnswer = new Answer();
         createdAnswer.setId("new-answer-id");
         createdAnswer.setQuestionId("q-123");
         createdAnswer.setEmployeeAssessmentId("ea-123");
@@ -248,7 +248,7 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        AnswerV2 updatedAnswer = new AnswerV2();
+        Answer updatedAnswer = new Answer();
         updatedAnswer.setId(answerId);
         updatedAnswer.setQuestionId("q-123");
         updatedAnswer.setEmployeeAssessmentId("ea-123");

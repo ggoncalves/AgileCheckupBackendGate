@@ -1,8 +1,8 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.service.DepartmentServiceV2;
+import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.service.DepartmentService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -36,7 +36,7 @@ class DepartmentRequestHandlerTest {
     private ServiceComponent serviceComponent;
 
     @Mock
-    private DepartmentServiceV2 departmentService;
+    private DepartmentService departmentService;
 
     @Mock
     private Context context;
@@ -61,14 +61,14 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments")
                 .withHttpMethod("GET");
 
-        DepartmentV2 dept1 = new DepartmentV2();
+        Department dept1 = new Department();
         dept1.setId("dept-1");
         dept1.setName("Engineering");
         dept1.setDescription("Engineering department");
         dept1.setTenantId("tenant-123");
         dept1.setCompanyId("company-123");
 
-        DepartmentV2 dept2 = new DepartmentV2();
+        Department dept2 = new Department();
         dept2.setId("dept-2");
         dept2.setName("Sales");
         dept2.setDescription("Sales department");
@@ -98,7 +98,7 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        DepartmentV2 dept1 = new DepartmentV2();
+        Department dept1 = new Department();
         dept1.setId("dept-1");
         dept1.setName("Engineering");
         dept1.setDescription("Engineering department");
@@ -125,7 +125,7 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments/" + departmentId)
                 .withHttpMethod("GET");
 
-        DepartmentV2 department = new DepartmentV2();
+        Department department = new Department();
         department.setId(departmentId);
         department.setName("Engineering");
         department.setDescription("Engineering department");
@@ -178,7 +178,7 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        DepartmentV2 createdDepartment = new DepartmentV2();
+        Department createdDepartment = new Department();
         createdDepartment.setId("new-dept-id");
         createdDepartment.setName("Engineering");
         createdDepartment.setDescription("Engineering department");
@@ -248,7 +248,7 @@ class DepartmentRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        DepartmentV2 updatedDepartment = new DepartmentV2();
+        Department updatedDepartment = new Department();
         updatedDepartment.setId(departmentId);
         updatedDepartment.setName("Updated Engineering");
         updatedDepartment.setDescription("Updated description");
@@ -312,7 +312,7 @@ class DepartmentRequestHandlerTest {
                 .withPath("/departments/" + departmentId)
                 .withHttpMethod("DELETE");
 
-        DepartmentV2 department = new DepartmentV2();
+        Department department = new Department();
         department.setId(departmentId);
         department.setName("Engineering");
         department.setDescription("Engineering department");

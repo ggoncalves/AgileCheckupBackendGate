@@ -5,10 +5,10 @@ import com.agilecheckup.gate.dto.DashboardAnalyticsOverviewResponse;
 import com.agilecheckup.gate.dto.DashboardAnalyticsTeamResponse;
 import com.agilecheckup.gate.dto.PerformanceCycleSummaryResponse;
 import com.agilecheckup.persistency.entity.AnalyticsScope;
-import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
-import com.agilecheckup.persistency.entity.DashboardAnalyticsV2;
-import com.agilecheckup.service.AssessmentMatrixServiceV2;
-import com.agilecheckup.service.DashboardAnalyticsServiceV2;
+import com.agilecheckup.persistency.entity.AssessmentMatrix;
+import com.agilecheckup.persistency.entity.DashboardAnalytics;
+import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.DashboardAnalyticsService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -28,13 +28,13 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     private static final Pattern COMPUTE_PATTERN = Pattern.compile("^/dashboard-analytics/compute/([^/]+)/?$");
     private static final Pattern PERFORMANCE_CYCLE_SUMMARY_PATTERN = Pattern.compile("^/performance-cycle-summary/([^/]+)/?$");
 
-    private final DashboardAnalyticsServiceV2 dashboardAnalyticsService;
-    private final AssessmentMatrixServiceV2 assessmentMatrixService;
+    private final DashboardAnalyticsService dashboardAnalyticsService;
+    private final AssessmentMatrixService assessmentMatrixService;
     private final ObjectMapper objectMapper;
 
     public DashboardAnalyticsRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
-        this.dashboardAnalyticsService = serviceComponent.buildDashboardAnalyticsServiceV2();
-        this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixServiceV2();
+        this.dashboardAnalyticsService = serviceComponent.buildDashboardAnalyticsService();
+        this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
         this.objectMapper = objectMapper;
     }
 
@@ -147,7 +147,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return accessCheck; // Return 403 or 404 if access denied or matrix not found
             }
 
-            Optional<DashboardAnalyticsV2> overviewOpt = dashboardAnalyticsService.getOverview(assessmentMatrixId);
+            Optional<DashboardAnalytics> overviewOpt = dashboardAnalyticsService.getOverview(assessmentMatrixId);
             
             if (overviewOpt.isEmpty()) {
                 // Return empty analytics response (tenant access already verified)
@@ -155,10 +155,10 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(emptyResponse));
             }
 
-            DashboardAnalyticsV2 overview = overviewOpt.get();
+            DashboardAnalytics overview = overviewOpt.get();
             
             // Get all analytics for teams
-            List<DashboardAnalyticsV2> allAnalytics = dashboardAnalyticsService.getAllAnalytics(assessmentMatrixId);
+            List<DashboardAnalytics> allAnalytics = dashboardAnalyticsService.getAllAnalytics(assessmentMatrixId);
             
             DashboardAnalyticsOverviewResponse response = buildOverviewResponse(overview, allAnalytics);
             
@@ -192,7 +192,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return accessCheck; // Return 403 or 404 if access denied or matrix not found
             }
 
-            Optional<DashboardAnalyticsV2> teamAnalyticsOpt = dashboardAnalyticsService.getTeamAnalytics(assessmentMatrixId, teamId);
+            Optional<DashboardAnalytics> teamAnalyticsOpt = dashboardAnalyticsService.getTeamAnalytics(assessmentMatrixId, teamId);
             
             if (teamAnalyticsOpt.isEmpty()) {
                 // Return empty team analytics response (tenant access already verified)
@@ -200,7 +200,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
                 return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(emptyResponse));
             }
 
-            DashboardAnalyticsV2 teamAnalytics = teamAnalyticsOpt.get();
+            DashboardAnalytics teamAnalytics = teamAnalyticsOpt.get();
 
             DashboardAnalyticsTeamResponse response = buildTeamResponse(teamAnalytics);
             
@@ -251,7 +251,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     /**
      * Build overview response from dashboard analytics data
      */
-    private DashboardAnalyticsOverviewResponse buildOverviewResponse(DashboardAnalyticsV2 overview, List<DashboardAnalyticsV2> allAnalytics) {
+    private DashboardAnalyticsOverviewResponse buildOverviewResponse(DashboardAnalytics overview, List<DashboardAnalytics> allAnalytics) {
         try {
             // Parse analytics data from JSON
             Map<String, Object> analyticsData = parseAnalyticsData(overview.getAnalyticsDataJson());
@@ -299,7 +299,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     /**
      * Build team response from dashboard analytics data
      */
-    private DashboardAnalyticsTeamResponse buildTeamResponse(DashboardAnalyticsV2 teamAnalytics) {
+    private DashboardAnalyticsTeamResponse buildTeamResponse(DashboardAnalytics teamAnalytics) {
         try {
             // Parse analytics data from JSON
             Map<String, Object> analyticsData = parseAnalyticsData(teamAnalytics.getAnalyticsDataJson());
@@ -328,7 +328,7 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     /**
      * Build team overview from dashboard analytics
      */
-    private DashboardAnalyticsOverviewResponse.TeamOverview buildTeamOverview(DashboardAnalyticsV2 analytics) {
+    private DashboardAnalyticsOverviewResponse.TeamOverview buildTeamOverview(DashboardAnalytics analytics) {
         try {
             // Parse analytics data to extract pillar scores
             Map<String, Object> analyticsData = parseAnalyticsData(analytics.getAnalyticsDataJson());
@@ -481,14 +481,14 @@ public class DashboardAnalyticsRequestHandler implements RequestHandlerStrategy 
     private APIGatewayProxyResponseEvent verifyTenantAccess(String assessmentMatrixId, String tenantId, Context context) {
         try {
             // Get the assessment matrix to verify tenant access
-            Optional<AssessmentMatrixV2> matrixOpt = assessmentMatrixService.findById(assessmentMatrixId);
+            Optional<AssessmentMatrix> matrixOpt = assessmentMatrixService.findById(assessmentMatrixId);
             
             if (matrixOpt.isEmpty()) {
                 context.getLogger().log("DashboardAnalyticsRequestHandler: Assessment matrix not found: " + assessmentMatrixId);
                 return ResponseBuilder.buildResponse(404, "Assessment matrix not found");
             }
             
-            AssessmentMatrixV2 matrix = matrixOpt.get();
+            AssessmentMatrix matrix = matrixOpt.get();
             
             // Verify that the tenant ID matches the company ID (tenant) of the assessment matrix
             if (!tenantId.equals(matrix.getTenantId())) {

@@ -5,21 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Map;
-
 /**
- * API model for PillarV2 to be used in REST endpoints
- * This model represents the V2 structure for pillars
+ * API model for Category to be used in REST endpoints
+ * This model represents the  structure for categories
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PillarApiV2 {
+public class CategoryApi {
     private String id;
     private String name;
     private String description;
-    private Map<String, CategoryApiV2> categoryMap;
     private String createdDate;
     private String lastUpdatedDate;
 }

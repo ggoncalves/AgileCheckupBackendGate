@@ -1,8 +1,8 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.PerformanceCycleV2;
-import com.agilecheckup.service.PerformanceCycleServiceV2;
+import com.agilecheckup.persistency.entity.PerformanceCycle;
+import com.agilecheckup.service.PerformanceCycleService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -37,7 +37,7 @@ class PerformanceCycleRequestHandlerTest {
     private ServiceComponent mockServiceComponent;
 
     @Mock
-    private PerformanceCycleServiceV2 mockPerformanceCycleService;
+    private PerformanceCycleService mockPerformanceCycleService;
 
     @Mock
     private Context mockContext;
@@ -66,7 +66,7 @@ class PerformanceCycleRequestHandlerTest {
             .withHttpMethod("GET")
             .withQueryStringParameters(java.util.Collections.singletonMap("tenantId", tenantId));
 
-        PerformanceCycleV2 cycle1 = PerformanceCycleV2.builder()
+        PerformanceCycle cycle1 = PerformanceCycle.builder()
                 .id("1")
                 .name("Q1 2024")
                 .description("First quarter")
@@ -76,7 +76,7 @@ class PerformanceCycleRequestHandlerTest {
                 .isTimeSensitive(false)
                 .build();
 
-        PerformanceCycleV2 cycle2 = PerformanceCycleV2.builder()
+        PerformanceCycle cycle2 = PerformanceCycle.builder()
                 .id("2")
                 .name("Q2 2024")
                 .description("Second quarter")
@@ -88,7 +88,7 @@ class PerformanceCycleRequestHandlerTest {
                 .endDate(LocalDate.of(2024, 3, 31))
                 .build();
 
-        List<PerformanceCycleV2> cyclesList = Arrays.asList(cycle1, cycle2);
+        List<PerformanceCycle> cyclesList = Arrays.asList(cycle1, cycle2);
         doReturn(cyclesList).when(mockPerformanceCycleService).findAllByTenantId(tenantId);
 
         // Execute
@@ -122,7 +122,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("GET");
 
-        PerformanceCycleV2 cycle = PerformanceCycleV2.builder()
+        PerformanceCycle cycle = PerformanceCycle.builder()
                 .id(cycleId)
                 .name("Annual Review 2024")
                 .description("Annual performance review")
@@ -179,7 +179,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
                 .id("new-id")
                 .name("Q3 2024")
                 .description("Third quarter review")
@@ -236,7 +236,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
                 .id("new-id")
                 .name("Ongoing Review")
                 .description("Continuous performance review")
@@ -247,7 +247,7 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Ongoing Review"),
                 eq("Continuous performance review"),
                 eq("company1"),
@@ -263,7 +263,7 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Ongoing Review"),
                 eq("Continuous performance review"),
                 eq("company1"),
@@ -294,7 +294,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 updatedCycle = PerformanceCycleV2.builder()
+        PerformanceCycle updatedCycle = PerformanceCycle.builder()
                 .id(cycleId)
                 .name("Updated Q1 2024")
                 .description("Updated first quarter")
@@ -382,7 +382,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withPath("/performancecycles/" + cycleId)
                 .withHttpMethod("DELETE");
 
-        PerformanceCycleV2 cycle = PerformanceCycleV2.builder()
+        PerformanceCycle cycle = PerformanceCycle.builder()
                 .id(cycleId)
                 .name("To Delete")
                 .description("Cycle to be deleted")
@@ -455,7 +455,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
                 .id("new-id")
                 .name("Q4 2024")
                 .description("Fourth quarter review")
@@ -468,7 +468,7 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Q4 2024"),
                 eq("Fourth quarter review"),
                 eq("company1"),
@@ -484,7 +484,7 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Q4 2024"),
                 eq("Fourth quarter review"),
                 eq("company1"),
@@ -514,7 +514,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
                 .id("new-id")
                 .name("Q1 2025")
                 .description("First quarter 2025")
@@ -527,7 +527,7 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Q1 2025"),
                 eq("First quarter 2025"),
                 eq("company1"),
@@ -543,7 +543,7 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Q1 2025"),
                 eq("First quarter 2025"),
                 eq("company1"),
@@ -571,7 +571,7 @@ class PerformanceCycleRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        PerformanceCycleV2 createdCycle = PerformanceCycleV2.builder()
+        PerformanceCycle createdCycle = PerformanceCycle.builder()
                 .id("new-id")
                 .name("Open Review")
                 .description("Open-ended review")
@@ -582,7 +582,7 @@ class PerformanceCycleRequestHandlerTest {
                 .build();
 
         doReturn(Optional.of(createdCycle)).when(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Open Review"),
                 eq("Open-ended review"),
                 eq("company1"),
@@ -598,7 +598,7 @@ class PerformanceCycleRequestHandlerTest {
         // Verify
         assertEquals(201, response.getStatusCode());
         verify(mockPerformanceCycleService).create(
-                eq("tenant1"),  // V2 signature: tenantId first
+                eq("tenant1"),  //  signature: tenantId first
                 eq("Open Review"),
                 eq("Open-ended review"),
                 eq("company1"),

@@ -1,19 +1,19 @@
 package com.agilecheckup.api.handler;
 
-import com.agilecheckup.api.model.CategoryApiV2;
-import com.agilecheckup.api.model.PillarApiV2;
+import com.agilecheckup.api.model.CategoryApi;
+import com.agilecheckup.api.model.PillarApi;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
 import com.agilecheckup.gate.dto.DashboardResponse;
 import com.agilecheckup.gate.dto.EmployeeAssessmentDetail;
 import com.agilecheckup.gate.dto.EmployeePageResponse;
 import com.agilecheckup.gate.dto.TeamSummary;
-import com.agilecheckup.persistency.entity.AssessmentConfigurationV2;
-import com.agilecheckup.persistency.entity.AssessmentMatrixV2;
-import com.agilecheckup.persistency.entity.CategoryV2;
-import com.agilecheckup.persistency.entity.PillarV2;
+import com.agilecheckup.persistency.entity.AssessmentConfiguration;
+import com.agilecheckup.persistency.entity.AssessmentMatrix;
+import com.agilecheckup.persistency.entity.Category;
+import com.agilecheckup.persistency.entity.Pillar;
 import com.agilecheckup.persistency.entity.QuestionNavigationType;
-import com.agilecheckup.service.AssessmentMatrixServiceV2;
+import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -27,26 +27,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrixV2> {
+public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<AssessmentMatrix> {
 
   private static final Pattern UPDATE_POTENTIAL_SCORE_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/potentialscore/?$");
   private static final Pattern DASHBOARD_PATTERN = Pattern.compile("^/assessmentmatrices/([^/]+)/dashboard/?$");
 
-  private final AssessmentMatrixServiceV2 assessmentMatrixServiceV2;
+  private final AssessmentMatrixService assessmentMatrixService;
   private final CacheManager cacheManager;
 
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
     super(objectMapper, "assessmentmatrices");
-    // Using V2 service directly through assessmentMatrixServiceV2
-    this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
+    // Using  service directly through assessmentMatrixService
+    this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
     this.cacheManager = new CacheManager(); // Simple instantiation for now - to be fixed later
   }
 
   // Constructor for testing with mocked cache manager
   public AssessmentMatrixRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper, CacheManager cacheManager) {
     super(objectMapper, "assessmentmatrices");
-    // Using V2 service directly through assessmentMatrixServiceV2
-    this.assessmentMatrixServiceV2 = serviceComponent.buildAssessmentMatrixServiceV2();
+    // Using  service directly through assessmentMatrixService
+    this.assessmentMatrixService = serviceComponent.buildAssessmentMatrixService();
     this.cacheManager = cacheManager;
   }
 
@@ -80,7 +80,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
     if (queryParams != null && queryParams.containsKey("tenantId")) {
       String tenantId = queryParams.get("tenantId");
-      List<AssessmentMatrixV2> matrices = assessmentMatrixServiceV2.findAllByTenantId(tenantId);
+      List<AssessmentMatrix> matrices = assessmentMatrixService.findAllByTenantId(tenantId);
       String jsonResponse = objectMapper.writeValueAsString(matrices);
       return ResponseBuilder.buildResponse(200, jsonResponse);
     }
@@ -91,7 +91,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
   @Override
   protected APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.findById(id);
+    Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.findById(id);
 
     if (assessmentMatrix.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrix.get()));
@@ -105,14 +105,14 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-      // Create the pillar map with V2 types
-      Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
+      // Create the pillar map with  types
+      Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
 
       // Create the assessment configuration if provided
-      AssessmentConfigurationV2 configuration = buildAssessmentConfiguration(requestMap);
+      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
 
       // Now create the assessment matrix with properly typed pillar map and configuration
-      Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.create(
+      Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.create(
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
           (String) requestMap.get("tenantId"),
@@ -137,13 +137,13 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     try {
       Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-      // Create the pillar map with V2 types
-      Map<String, PillarV2> pillarMap = buildPillarMapV2(requestMap);
+      // Create the pillar map with  types
+      Map<String, Pillar> pillarMap = buildPillarMap(requestMap);
 
       // Create the assessment configuration if provided
-      AssessmentConfigurationV2 configuration = buildAssessmentConfiguration(requestMap);
+      AssessmentConfiguration configuration = buildAssessmentConfiguration(requestMap);
 
-      Optional<AssessmentMatrixV2> assessmentMatrix = assessmentMatrixServiceV2.update(
+      Optional<AssessmentMatrix> assessmentMatrix = assessmentMatrixService.update(
           id,
           (String) requestMap.get("name"),
           (String) requestMap.get("description"),
@@ -164,54 +164,14 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     }
   }
 
-  private Map<String, PillarV2> buildPillarMap(Map<String, Object> requestMap) {
-    Map<String, PillarV2> pillarMap = new HashMap<>();
-    if (requestMap.containsKey("pillarMap") && requestMap.get("pillarMap") != null) {
-      Map<String, Object> rawPillarMap = (Map<String, Object>) requestMap.get("pillarMap");
-
-      for (Map.Entry<String, Object> entry : rawPillarMap.entrySet()) {
-        String pillarId = entry.getKey();
-        Map<String, Object> pillarData = (Map<String, Object>) entry.getValue();
-
-        Map<String, CategoryV2> categoryMap = new HashMap<>();
-        if (pillarData.containsKey("categoryMap") && pillarData.get("categoryMap") != null) {
-          Map<String, Object> rawCategoryMap = (Map<String, Object>) pillarData.get("categoryMap");
-
-          for (Map.Entry<String, Object> catEntry : rawCategoryMap.entrySet()) {
-            String categoryId = catEntry.getKey();
-            Map<String, Object> categoryData = (Map<String, Object>) catEntry.getValue();
-
-            CategoryV2 category = CategoryV2.builder()
-                .id(categoryId)
-                .name((String) categoryData.get("name"))
-                .description((String) categoryData.get("description"))
-                .build();
-
-            categoryMap.put(categoryId, category);
-          }
-        }
-
-        PillarV2 pillar = PillarV2.builder()
-            .id(pillarId)
-            .name((String) pillarData.get("name"))
-            .description((String) pillarData.get("description"))
-            .categoryMap(categoryMap)
-            .build();
-
-        pillarMap.put(pillarId, pillar);
-      }
-    }
-    return pillarMap;
-  }
-
-  private AssessmentConfigurationV2 buildAssessmentConfiguration(Map<String, Object> requestMap) {
+  private AssessmentConfiguration buildAssessmentConfiguration(Map<String, Object> requestMap) {
     if (!hasConfiguration(requestMap)) {
       return null;
     }
 
     Map<String, Object> configData = extractConfigurationData(requestMap);
 
-    return AssessmentConfigurationV2.builder()
+    return AssessmentConfiguration.builder()
         .allowQuestionReview(getBooleanOrDefault(configData, "allowQuestionReview", true))
         .requireAllQuestions(getBooleanOrDefault(configData, "requireAllQuestions", true))
         .autoSave(getBooleanOrDefault(configData, "autoSave", true))
@@ -247,7 +207,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
     String tenantId = (String) requestMap.get("tenantId");
 
-    AssessmentMatrixV2 assessmentMatrix = assessmentMatrixServiceV2.updateCurrentPotentialScore(id, tenantId);
+    AssessmentMatrix assessmentMatrix = assessmentMatrixService.updateCurrentPotentialScore(id, tenantId);
 
     if (assessmentMatrix != null) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessmentMatrix));
@@ -258,7 +218,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
   @Override
   protected APIGatewayProxyResponseEvent handleDelete(String id) throws Exception {
-    boolean deleted = assessmentMatrixServiceV2.deleteById(id);
+    boolean deleted = assessmentMatrixService.deleteById(id);
 
     if (deleted) {
       return ResponseBuilder.buildResponse(204, "");
@@ -300,7 +260,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
 
       // Get dashboard data from service
       Optional<com.agilecheckup.service.dto.AssessmentDashboardData> dashboardData =
-          assessmentMatrixServiceV2.getAssessmentDashboard(matrixId, tenantId);
+          assessmentMatrixService.getAssessmentDashboard(matrixId, tenantId);
 
       if (!dashboardData.isPresent()) {
         return ResponseBuilder.buildResponse(404, "Assessment matrix not found or access denied");
@@ -338,7 +298,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
    * Converts domain DTO to presentation DTO with pagination support.
    */
   private DashboardResponse convertToDashboardResponse(com.agilecheckup.service.dto.AssessmentDashboardData dashboardData, int page, int pageSize) {
-    // Convert V2 summaries to presentation DTOs
+    // Convert  summaries to presentation DTOs
     List<TeamSummary> teamSummaries = convertTeamSummaries(dashboardData.getTeamSummaries());
     List<EmployeeAssessmentDetail> allEmployeeDetails = convertEmployeeSummaries(dashboardData.getEmployeeSummaries());
 
@@ -375,10 +335,10 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   }
 
   /**
-   * Builds PillarV2 map from request data using V2 entities
+   * Builds Pillar map from request data using  entities
    */
-  private Map<String, PillarV2> buildPillarMapV2(Map<String, Object> requestMap) {
-    Map<String, PillarV2> pillarMap = new HashMap<>();
+  private Map<String, Pillar> buildPillarMap(Map<String, Object> requestMap) {
+    Map<String, Pillar> pillarMap = new HashMap<>();
     if (requestMap.containsKey("pillarMap") && requestMap.get("pillarMap") != null) {
       Map<String, Object> rawPillarMap = (Map<String, Object>) requestMap.get("pillarMap");
 
@@ -386,7 +346,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
         String pillarId = entry.getKey();
         Map<String, Object> pillarData = (Map<String, Object>) entry.getValue();
 
-        Map<String, CategoryV2> categoryMap = new HashMap<>();
+        Map<String, Category> categoryMap = new HashMap<>();
         if (pillarData.containsKey("categoryMap") && pillarData.get("categoryMap") != null) {
           Map<String, Object> rawCategoryMap = (Map<String, Object>) pillarData.get("categoryMap");
 
@@ -394,7 +354,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
             String categoryId = catEntry.getKey();
             Map<String, Object> categoryData = (Map<String, Object>) catEntry.getValue();
 
-            CategoryV2 category = CategoryV2.builder()
+            Category category = Category.builder()
                 .id(categoryId)
                 .name((String) categoryData.get("name"))
                 .description((String) categoryData.get("description"))
@@ -404,7 +364,7 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
           }
         }
 
-        PillarV2 pillar = PillarV2.builder()
+        Pillar pillar = Pillar.builder()
             .id(pillarId)
             .name((String) pillarData.get("name"))
             .description((String) pillarData.get("description"))
@@ -418,21 +378,21 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   }
 
   /**
-   * Converts PillarV2 entity to PillarApiV2 API model
+   * Converts Pillar entity to PillarApi API model
    */
-  private PillarApiV2 convertPillarV2ToApi(PillarV2 pillar) {
+  private PillarApi convertPillarToApi(Pillar pillar) {
     if (pillar == null) {
       return null;
     }
 
-    Map<String, CategoryApiV2> categoryApiMap = new HashMap<>();
+    Map<String, CategoryApi> categoryApiMap = new HashMap<>();
     if (pillar.getCategoryMap() != null) {
-      for (Map.Entry<String, CategoryV2> entry : pillar.getCategoryMap().entrySet()) {
-        categoryApiMap.put(entry.getKey(), convertCategoryV2ToApi(entry.getValue()));
+      for (Map.Entry<String, Category> entry : pillar.getCategoryMap().entrySet()) {
+        categoryApiMap.put(entry.getKey(), convertCategoryToApi(entry.getValue()));
       }
     }
 
-    return PillarApiV2.builder()
+    return PillarApi.builder()
         .id(pillar.getId())
         .name(pillar.getName())
         .description(pillar.getDescription())
@@ -443,14 +403,14 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   }
 
   /**
-   * Converts CategoryV2 entity to CategoryApiV2 API model
+   * Converts Category entity to CategoryApi API model
    */
-  private CategoryApiV2 convertCategoryV2ToApi(CategoryV2 category) {
+  private CategoryApi convertCategoryToApi(Category category) {
     if (category == null) {
       return null;
     }
 
-    return CategoryApiV2.builder()
+    return CategoryApi.builder()
         .id(category.getId())
         .name(category.getName())
         .description(category.getDescription())
@@ -460,58 +420,58 @@ public class AssessmentMatrixRequestHandler extends AbstractCrudRequestHandler<A
   }
 
   /**
-   * Converts V2 team summaries to presentation DTOs
+   * Converts  team summaries to presentation DTOs
    */
-  private List<TeamSummary> convertTeamSummaries(List<com.agilecheckup.service.dto.TeamAssessmentSummaryV2> teamSummariesV2) {
-    if (teamSummariesV2 == null) {
+  private List<TeamSummary> convertTeamSummaries(List<com.agilecheckup.service.dto.TeamAssessmentSummary> teamSummaries) {
+    if (teamSummaries == null) {
       return Collections.emptyList();
     }
     
-    return teamSummariesV2.stream()
+    return teamSummaries.stream()
         .map(this::convertTeamSummary)
         .collect(java.util.stream.Collectors.toList());
   }
   
   /**
-   * Converts V2 employee summaries to presentation DTOs
+   * Converts  employee summaries to presentation DTOs
    */
-  private List<EmployeeAssessmentDetail> convertEmployeeSummaries(List<com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2> employeeSummariesV2) {
-    if (employeeSummariesV2 == null) {
+  private List<EmployeeAssessmentDetail> convertEmployeeSummaries(List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> employeeSummaries) {
+    if (employeeSummaries == null) {
       return Collections.emptyList();
     }
     
-    return employeeSummariesV2.stream()
+    return employeeSummaries.stream()
         .map(this::convertEmployeeSummary)
         .collect(java.util.stream.Collectors.toList());
   }
   
   /**
-   * Converts a single V2 team summary to presentation DTO
+   * Converts a single  team summary to presentation DTO
    */
-  private TeamSummary convertTeamSummary(com.agilecheckup.service.dto.TeamAssessmentSummaryV2 teamSummaryV2) {
+  private TeamSummary convertTeamSummary(com.agilecheckup.service.dto.TeamAssessmentSummary teamSummary) {
     return TeamSummary.builder()
-        .teamId(teamSummaryV2.getTeamId())
-        .teamName(teamSummaryV2.getTeamName())
-        .totalEmployees(teamSummaryV2.getTotalEmployees())
-        .completedAssessments(teamSummaryV2.getCompletedAssessments())
-        .completionPercentage(teamSummaryV2.getCompletionPercentage())
-        .averageScore(teamSummaryV2.getAverageScore())
+        .teamId(teamSummary.getTeamId())
+        .teamName(teamSummary.getTeamName())
+        .totalEmployees(teamSummary.getTotalEmployees())
+        .completedAssessments(teamSummary.getCompletedAssessments())
+        .completionPercentage(teamSummary.getCompletionPercentage())
+        .averageScore(teamSummary.getAverageScore())
         .build();
   }
   
   /**
-   * Converts a single V2 employee summary to presentation DTO
+   * Converts a single  employee summary to presentation DTO
    */
-  private EmployeeAssessmentDetail convertEmployeeSummary(com.agilecheckup.service.dto.EmployeeAssessmentSummaryV2 employeeSummaryV2) {
+  private EmployeeAssessmentDetail convertEmployeeSummary(com.agilecheckup.service.dto.EmployeeAssessmentSummary employeeSummary) {
     return EmployeeAssessmentDetail.builder()
-        .employeeAssessmentId(employeeSummaryV2.getEmployeeAssessmentId())
-        .employeeName(employeeSummaryV2.getEmployeeName())
-        .employeeEmail(employeeSummaryV2.getEmployeeEmail())
-        .teamId(employeeSummaryV2.getTeamId())
-        .status(employeeSummaryV2.getAssessmentStatus() != null ? employeeSummaryV2.getAssessmentStatus().toString() : null)
-        .answeredQuestions(employeeSummaryV2.getAnsweredQuestionCount())
-        .currentScore(employeeSummaryV2.getCurrentScore())
-        .lastActivityDate(employeeSummaryV2.getLastActivityDate())
+        .employeeAssessmentId(employeeSummary.getEmployeeAssessmentId())
+        .employeeName(employeeSummary.getEmployeeName())
+        .employeeEmail(employeeSummary.getEmployeeEmail())
+        .teamId(employeeSummary.getTeamId())
+        .status(employeeSummary.getAssessmentStatus() != null ? employeeSummary.getAssessmentStatus().toString() : null)
+        .answeredQuestions(employeeSummary.getAnsweredQuestionCount())
+        .currentScore(employeeSummary.getCurrentScore())
+        .lastActivityDate(employeeSummary.getLastActivityDate())
         .build();
   }
 

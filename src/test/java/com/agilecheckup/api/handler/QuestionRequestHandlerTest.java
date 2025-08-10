@@ -2,10 +2,10 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
-import com.agilecheckup.persistency.entity.question.AnswerV2;
-import com.agilecheckup.persistency.entity.question.QuestionV2;
-import com.agilecheckup.service.AssessmentNavigationServiceV2;
-import com.agilecheckup.service.QuestionServiceV2;
+import com.agilecheckup.persistency.entity.question.Answer;
+import com.agilecheckup.persistency.entity.question.Question;
+import com.agilecheckup.service.AssessmentNavigationService;
+import com.agilecheckup.service.QuestionService;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
@@ -42,10 +42,10 @@ class QuestionRequestHandlerTest {
     private ServiceComponent serviceComponent;
 
     @Mock
-    private QuestionServiceV2 questionService;
+    private QuestionService questionService;
 
     @Mock
-    private AssessmentNavigationServiceV2 assessmentNavigationService;
+    private AssessmentNavigationService assessmentNavigationService;
 
     @Mock
     private Context context;
@@ -61,8 +61,8 @@ class QuestionRequestHandlerTest {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         
-        lenient().doReturn(questionService).when(serviceComponent).buildQuestionServiceV2();
-        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationServiceV2();
+        lenient().doReturn(questionService).when(serviceComponent).buildQuestionService();
+        lenient().doReturn(assessmentNavigationService).when(serviceComponent).buildAssessmentNavigationService();
         lenient().doReturn(lambdaLogger).when(context).getLogger();
         handler = new QuestionRequestHandler(serviceComponent, objectMapper);
     }
@@ -78,7 +78,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        QuestionV2 question1 = QuestionV2.builder()
+        Question question1 = Question.builder()
                 .id("q-1")
                 .question("How effective is your team?")
                 .questionType(QuestionType.YES_NO)
@@ -90,7 +90,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Category Name")
                 .build();
 
-        QuestionV2 question2 = QuestionV2.builder()
+        Question question2 = Question.builder()
                 .id("q-2")
                 .question("Rate your satisfaction")
                 .questionType(QuestionType.ONE_TO_TEN)
@@ -102,7 +102,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Category Name")
                 .build();
 
-        List<QuestionV2> questions = Arrays.asList(question1, question2);
+        List<Question> questions = Arrays.asList(question1, question2);
         doReturn(questions).when(questionService).findAllByTenantId("tenant-123");
 
         // When
@@ -138,7 +138,7 @@ class QuestionRequestHandlerTest {
                 .withPath("/questions/" + questionId)
                 .withHttpMethod("GET");
 
-        QuestionV2 question = QuestionV2.builder()
+        Question question = Question.builder()
                 .id(questionId)
                 .question("How effective is your team?")
                 .questionType(QuestionType.YES_NO)
@@ -173,7 +173,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        QuestionV2 question1 = QuestionV2.builder()
+        Question question1 = Question.builder()
                 .id("q-1")
                 .question("Team effectiveness question")
                 .assessmentMatrixId(matrixId)
@@ -185,7 +185,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Category Name")
                 .build();
 
-        List<QuestionV2> questions = Arrays.asList(question1);
+        List<Question> questions = Arrays.asList(question1);
         doReturn(questions).when(questionService).findByAssessmentMatrixId(eq(matrixId), eq("tenant-123"));
 
         // When
@@ -216,7 +216,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        QuestionV2 createdQuestion = QuestionV2.builder()
+        Question createdQuestion = Question.builder()
                 .id("new-question-id")
                 .question("How effective is your team?")
                 .questionType(QuestionType.YES_NO)
@@ -282,7 +282,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        QuestionV2 createdQuestion = QuestionV2.builder()
+        Question createdQuestion = Question.builder()
                 .id("new-custom-question-id")
                 .question("Custom question with options")
                 .questionType(QuestionType.CUSTOMIZED)
@@ -347,7 +347,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        QuestionV2 updatedQuestion = QuestionV2.builder()
+        Question updatedQuestion = Question.builder()
                 .id(questionId)
                 .question("Updated question text")
                 .questionType(QuestionType.ONE_TO_TEN)
@@ -415,7 +415,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        QuestionV2 updatedQuestion = QuestionV2.builder()
+        Question updatedQuestion = Question.builder()
                 .id(questionId)
                 .question("Updated custom question")
                 .questionType(QuestionType.CUSTOMIZED)
@@ -470,7 +470,7 @@ class QuestionRequestHandlerTest {
                 .withPath("/questions/" + questionId)
                 .withHttpMethod("DELETE");
 
-        QuestionV2 question = QuestionV2.builder()
+        Question question = Question.builder()
                 .id(questionId)
                 .question("Question to delete")
                 .questionType(QuestionType.YES_NO)
@@ -553,7 +553,7 @@ class QuestionRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        QuestionV2 nextQuestion = QuestionV2.builder()
+        Question nextQuestion = Question.builder()
                 .id("q-123")
                 .question("What is your experience with agile?")
                 .questionType(QuestionType.YES_NO)
@@ -565,7 +565,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Experience")
                 .build();
 
-        AnswerV2 existingAnswer = AnswerV2.builder()
+        Answer existingAnswer = Answer.builder()
                 .id("a-123")
                 .questionId("q-123")
                 .employeeAssessmentId(employeeAssessmentId)

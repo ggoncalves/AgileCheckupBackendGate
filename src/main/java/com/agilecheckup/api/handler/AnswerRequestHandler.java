@@ -1,9 +1,9 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.question.AnswerV2;
-import com.agilecheckup.service.AnswerServiceV2;
-import com.agilecheckup.service.AssessmentNavigationServiceV2;
+import com.agilecheckup.persistency.entity.question.Answer;
+import com.agilecheckup.service.AnswerService;
+import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.util.DateTimeUtil;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -23,13 +23,13 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   private static final Pattern GET_BY_EMPLOYEE_ASSESSMENT_PATTERN = Pattern.compile("^/answers/employeeassessment/([^/]+)/?$");
   private static final Pattern SAVE_AND_NEXT_PATTERN = Pattern.compile("^/answers/save-and-next/?$");
 
-  private final AnswerServiceV2 answerService;
-  private final AssessmentNavigationServiceV2 assessmentNavigationService;
+  private final AnswerService answerService;
+  private final AssessmentNavigationService assessmentNavigationService;
   private final ObjectMapper objectMapper;
 
   public AnswerRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
-    this.answerService = serviceComponent.buildAnswerServiceV2();
-    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationServiceV2();
+    this.answerService = serviceComponent.buildAnswerService();
+    this.assessmentNavigationService = serviceComponent.buildAssessmentNavigationService();
     this.objectMapper = objectMapper;
   }
 
@@ -91,7 +91,7 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<AnswerV2> answer = answerService.findById(id);
+    Optional<Answer> answer = answerService.findById(id);
 
     if (answer.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(answer.get()));
@@ -123,7 +123,7 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
       answeredAt = LocalDateTime.now();
     }
 
-    Optional<AnswerV2> answer = answerService.create(
+    Optional<Answer> answer = answerService.create(
         (String) requestMap.get("employeeAssessmentId"),
         (String) requestMap.get("questionId"),
         answeredAt,
@@ -145,7 +145,7 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
     // Parse the LocalDateTime using utility class
     LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
 
-    Optional<AnswerV2> answer = answerService.update(
+    Optional<Answer> answer = answerService.update(
         id,
         answeredAt,
         (String) requestMap.get("value"),

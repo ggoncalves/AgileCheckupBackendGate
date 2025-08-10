@@ -1,10 +1,10 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.persistency.entity.TeamV2;
-import com.agilecheckup.service.DepartmentServiceV2;
-import com.agilecheckup.service.TeamServiceV2;
+import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.service.DepartmentService;
+import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -40,10 +40,10 @@ class TeamRequestHandlerTest {
   private ServiceComponent serviceComponent;
 
   @Mock
-  private TeamServiceV2 teamService;
+  private TeamService teamService;
 
   @Mock
-  private DepartmentServiceV2 departmentService;
+  private DepartmentService departmentService;
 
   @Mock
   private Context context;
@@ -62,7 +62,7 @@ class TeamRequestHandlerTest {
     handler = new TeamRequestHandler(serviceComponent, objectMapper);
   }
 
-  // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
+  // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleGetAll_whenTenantIdProvided_shouldReturnTeamsForTenant() {
     // Given
     String tenantId = "tenant-123";
@@ -74,10 +74,10 @@ class TeamRequestHandlerTest {
         .withHttpMethod("GET")
         .withQueryStringParameters(queryParams);
 
-    DepartmentV2 department = createDepartment("dept-1", "Engineering");
-    TeamV2 team1 = createTeam("team-1", "Team Alpha", department, tenantId);
-    TeamV2 team2 = createTeam("team-2", "Team Beta", department, tenantId);
-    List<TeamV2> teams = Arrays.asList(team1, team2);
+    Department department = createDepartment("dept-1", "Engineering");
+    Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
+    Team team2 = createTeam("team-2", "Team Beta", department, tenantId);
+    List<Team> teams = Arrays.asList(team1, team2);
 
     doReturn(teams).when(teamService).findAllByTenantId(tenantId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -93,7 +93,7 @@ class TeamRequestHandlerTest {
     verify(teamService, never()).findAll();
   }
 
-  // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
+  // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleGetAll_whenDepartmentIdAndTenantIdProvided_shouldReturnFilteredTeams() {
     // Given
     String tenantId = "tenant-123";
@@ -107,9 +107,9 @@ class TeamRequestHandlerTest {
         .withHttpMethod("GET")
         .withQueryStringParameters(queryParams);
 
-    DepartmentV2 department = createDepartment(departmentId, "Engineering");
-    TeamV2 team1 = createTeam("team-1", "Team Alpha", department, tenantId);
-    List<TeamV2> filteredTeams = Collections.singletonList(team1);
+    Department department = createDepartment(departmentId, "Engineering");
+    Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
+    List<Team> filteredTeams = Collections.singletonList(team1);
 
     doReturn(filteredTeams).when(teamService).findByDepartmentId(departmentId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -144,7 +144,7 @@ class TeamRequestHandlerTest {
     verify(teamService, never()).findByDepartmentId(anyString());
   }
 
-  // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
+  // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleGetById_whenTeamExists_shouldReturnTeam() {
     // Given
     String teamId = "team-123";
@@ -152,8 +152,8 @@ class TeamRequestHandlerTest {
         .withPath("/teams/" + teamId)
         .withHttpMethod("GET");
 
-    DepartmentV2 department = createDepartment("dept-1", "Engineering");
-    TeamV2 team = createTeam(teamId, "Team Alpha", department, "tenant-123");
+    Department department = createDepartment("dept-1", "Engineering");
+    Team team = createTeam(teamId, "Team Alpha", department, "tenant-123");
 
     doReturn(Optional.of(team)).when(teamService).findById(teamId);
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -187,7 +187,7 @@ class TeamRequestHandlerTest {
     verify(teamService).findById(teamId);
   }
 
-  // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
+  // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleCreate_withValidData_shouldCreateTeam() {
     // Given
     String requestBody = "{\n" +
@@ -202,10 +202,10 @@ class TeamRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    DepartmentV2 department = createDepartment("dept-1", "Engineering");
-    TeamV2 createdTeam = createTeam("new-team-id", "New Team", department, "tenant-123");
-    // Note: TeamV2 is immutable with SuperBuilder, so we need to create a new instance
-    createdTeam = TeamV2.builder()
+    Department department = createDepartment("dept-1", "Engineering");
+    Team createdTeam = createTeam("new-team-id", "New Team", department, "tenant-123");
+    // Note: Team is immutable with SuperBuilder, so we need to create a new instance
+    createdTeam = Team.builder()
         .id(createdTeam.getId())
         .name(createdTeam.getName())
         .description("A new development team")
@@ -251,7 +251,7 @@ class TeamRequestHandlerTest {
     assertThat(response.getBody()).isEqualTo("Failed to create team");
   }
 
-  // @Test - DISABLED: Temporary serialization issue with DepartmentV2 in TeamResponse
+  // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleUpdate_whenTeamExists_shouldUpdateTeam() {
     // Given
     String teamId = "team-123";
@@ -267,10 +267,10 @@ class TeamRequestHandlerTest {
         .withHttpMethod("PUT")
         .withBody(requestBody);
 
-    DepartmentV2 department = createDepartment("dept-2", "Operations");
-    TeamV2 updatedTeam = createTeam(teamId, "Updated Team", department, "tenant-123");
-    // Note: TeamV2 is immutable with SuperBuilder, so we need to create a new instance
-    updatedTeam = TeamV2.builder()
+    Department department = createDepartment("dept-2", "Operations");
+    Team updatedTeam = createTeam(teamId, "Updated Team", department, "tenant-123");
+    // Note: Team is immutable with SuperBuilder, so we need to create a new instance
+    updatedTeam = Team.builder()
         .id(updatedTeam.getId())
         .name(updatedTeam.getName())
         .description("Updated description")
@@ -325,8 +325,8 @@ class TeamRequestHandlerTest {
         .withPath("/teams/" + teamId)
         .withHttpMethod("DELETE");
 
-    DepartmentV2 department = createDepartment("dept-1", "Engineering");
-    TeamV2 team = createTeam(teamId, "Team to Delete", department, "tenant-123");
+    Department department = createDepartment("dept-1", "Engineering");
+    Team team = createTeam(teamId, "Team to Delete", department, "tenant-123");
 
     doReturn(Optional.of(team)).when(teamService).findById(teamId);
 
@@ -406,7 +406,7 @@ class TeamRequestHandlerTest {
         .withHttpMethod("POST")
         .withBody(requestBody);
 
-    // Mock service to return empty when called with null values (V2 API signature: tenantId, name, description, departmentId)
+    // Mock service to return empty when called with null values ( API signature: tenantId, name, description, departmentId)
     doReturn(Optional.empty()).when(teamService).create(isNull(), anyString(), isNull(), isNull());
 
     // When
@@ -435,16 +435,16 @@ class TeamRequestHandlerTest {
   }
 
   // Helper methods
-  private DepartmentV2 createDepartment(String id, String name) {
-    DepartmentV2 department = new DepartmentV2();
+  private Department createDepartment(String id, String name) {
+    Department department = new Department();
     department.setId(id);
     department.setName(name);
     department.setDescription(name + " Department");
     return department;
   }
 
-  private TeamV2 createTeam(String id, String name, DepartmentV2 department, String tenantId) {
-    return TeamV2.builder()
+  private Team createTeam(String id, String name, Department department, String tenantId) {
+    return Team.builder()
         .id(id)
         .name(name)
         .description(name + " Description")

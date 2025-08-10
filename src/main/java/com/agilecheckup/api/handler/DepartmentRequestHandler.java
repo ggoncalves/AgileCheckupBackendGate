@@ -1,11 +1,11 @@
 package com.agilecheckup.api.handler;
 
-import com.agilecheckup.service.DepartmentServiceV2;
+import com.agilecheckup.service.DepartmentService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.DepartmentV2;
+import com.agilecheckup.persistency.entity.Department;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
-  private final DepartmentServiceV2 departmentService;
+  private final DepartmentService departmentService;
   private final ObjectMapper objectMapper;
 
   // Regex patterns for path matching
@@ -78,7 +78,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<DepartmentV2> department = departmentService.findById(id);
+    Optional<Department> department = departmentService.findById(id);
 
     if (department.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(department.get()));
@@ -90,7 +90,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<DepartmentV2> department = departmentService.create(
+    Optional<Department> department = departmentService.create(
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
         (String) requestMap.get("tenantId"),
@@ -107,7 +107,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<DepartmentV2> department = departmentService.update(
+    Optional<Department> department = departmentService.update(
         id,
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
@@ -123,7 +123,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<DepartmentV2> department = departmentService.findById(id);
+    Optional<Department> department = departmentService.findById(id);
 
     if (department.isPresent()) {
       departmentService.deleteById(id);

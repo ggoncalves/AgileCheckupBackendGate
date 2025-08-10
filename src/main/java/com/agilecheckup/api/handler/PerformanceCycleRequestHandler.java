@@ -1,8 +1,8 @@
 package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.PerformanceCycleV2;
-import com.agilecheckup.service.PerformanceCycleServiceV2;
+import com.agilecheckup.persistency.entity.PerformanceCycle;
+import com.agilecheckup.service.PerformanceCycleService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -20,7 +20,7 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/performancecycles/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/performancecycles/([^/]+)/?$");
-  private final PerformanceCycleServiceV2 performanceCycleService;
+  private final PerformanceCycleService performanceCycleService;
   private final ObjectMapper objectMapper;
 
   public PerformanceCycleRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
@@ -81,7 +81,7 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<PerformanceCycleV2> performanceCycle = performanceCycleService.findById(id);
+    Optional<PerformanceCycle> performanceCycle = performanceCycleService.findById(id);
 
     if (performanceCycle.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycle.get()));
@@ -96,8 +96,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     LocalDate startDate = parseLocalDate(requestMap.get("startDate"));
     LocalDate endDate = parseLocalDate(requestMap.get("endDate"));
 
-    Optional<PerformanceCycleV2> performanceCycle = performanceCycleService.create(
-        (String) requestMap.get("tenantId"),  // V2 signature: tenantId first
+    Optional<PerformanceCycle> performanceCycle = performanceCycleService.create(
+        (String) requestMap.get("tenantId"),  //  signature: tenantId first
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
         (String) requestMap.get("companyId"),
@@ -120,9 +120,9 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     LocalDate startDate = parseLocalDate(requestMap.get("startDate"));
     LocalDate endDate = parseLocalDate(requestMap.get("endDate"));
 
-    Optional<PerformanceCycleV2> performanceCycle = performanceCycleService.update(
+    Optional<PerformanceCycle> performanceCycle = performanceCycleService.update(
         id,
-        (String) requestMap.get("tenantId"),  // V2 signature: tenantId second
+        (String) requestMap.get("tenantId"),  //  signature: tenantId second
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
         (String) requestMap.get("companyId"),
@@ -140,10 +140,10 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<PerformanceCycleV2> performanceCycle = performanceCycleService.findById(id);
+    Optional<PerformanceCycle> performanceCycle = performanceCycleService.findById(id);
 
     if (performanceCycle.isPresent()) {
-      performanceCycleService.deleteById(id);  // V2 uses deleteById(id) instead of delete(entity)
+      performanceCycleService.deleteById(id);  //  uses deleteById(id) instead of delete(entity)
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Performance cycle not found");

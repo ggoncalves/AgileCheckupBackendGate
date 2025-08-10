@@ -3,15 +3,15 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.api.validator.CompanyValidator;
 import com.agilecheckup.api.validator.ValidationResult;
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.CompanyV2;
+import com.agilecheckup.persistency.entity.Company;
 import com.agilecheckup.persistency.entity.CompanySize;
 import com.agilecheckup.persistency.entity.Industry;
-import com.agilecheckup.persistency.entity.person.AddressV2;
+import com.agilecheckup.persistency.entity.person.Address;
 import com.agilecheckup.persistency.entity.person.Gender;
 import com.agilecheckup.persistency.entity.person.GenderPronoun;
-import com.agilecheckup.persistency.entity.person.NaturalPersonV2;
+import com.agilecheckup.persistency.entity.person.NaturalPerson;
 import com.agilecheckup.persistency.entity.person.PersonDocumentType;
-import com.agilecheckup.service.CompanyServiceV2;
+import com.agilecheckup.service.CompanyService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -26,7 +26,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/companies/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/companies/([^/]+)/?$");
-  private final CompanyServiceV2 companyService;
+  private final CompanyService companyService;
   private final ObjectMapper objectMapper;
 
   public CompanyRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
@@ -82,7 +82,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<CompanyV2> company = companyService.findById(id);
+    Optional<Company> company = companyService.findById(id);
 
     if (company.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(company.get()));
@@ -103,11 +103,11 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     CompanySize size = parseCompanySize(companyBody.getSize());
     Industry industry = parseIndustry(companyBody.getIndustry());
 
-    // Convert API DTOs to V2 entities
-    NaturalPersonV2 contactPersonV2 = convertDtoToNaturalPersonV2(companyBody.getContactPerson());
-    AddressV2 addressV2 = convertDtoToAddressV2(companyBody.getAddress());
+    // Convert API DTOs to  entities
+    NaturalPerson contactPerson = convertDtoToNaturalPerson(companyBody.getContactPerson());
+    Address address = convertDtoToAddress(companyBody.getAddress());
 
-    Optional<CompanyV2> company = companyService.create(
+    Optional<Company> company = companyService.create(
         companyBody.getDocumentNumber(),
         companyBody.getName(),
         companyBody.getEmail(),
@@ -117,8 +117,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         industry,
         companyBody.getWebsite(),
         companyBody.getLegalName(),
-        contactPersonV2,
-        addressV2
+        contactPerson,
+        address
     );
 
     if (company.isPresent()) {
@@ -140,12 +140,12 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     CompanySize size = parseCompanySize(companyBody.getSize());
     Industry industry = parseIndustry(companyBody.getIndustry());
 
-    // Convert API DTOs to V2 entities
-    NaturalPersonV2 contactPersonV2 = convertDtoToNaturalPersonV2(companyBody.getContactPerson());
-    AddressV2 addressV2 = convertDtoToAddressV2(companyBody.getAddress());
+    // Convert API DTOs to  entities
+    NaturalPerson contactPerson = convertDtoToNaturalPerson(companyBody.getContactPerson());
+    Address address = convertDtoToAddress(companyBody.getAddress());
 
     // Use update method
-    Optional<CompanyV2> company = companyService.update(
+    Optional<Company> company = companyService.update(
         id,
         companyBody.getDocumentNumber(),
         companyBody.getName(),
@@ -156,8 +156,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         industry,
         companyBody.getWebsite(),
         companyBody.getLegalName(),
-        contactPersonV2,
-        addressV2
+        contactPerson,
+        address
     );
 
     if (company.isPresent()) {
@@ -172,7 +172,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<CompanyV2> company = companyService.findById(id);
+    Optional<Company> company = companyService.findById(id);
 
     if (company.isPresent()) {
       companyService.deleteById(id);
@@ -211,7 +211,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     }
   }
 
-  private NaturalPersonV2 convertDtoToNaturalPersonV2(com.agilecheckup.api.model.NaturalPersonDto dto) {
+  private NaturalPerson convertDtoToNaturalPerson(com.agilecheckup.api.model.NaturalPersonDto dto) {
     if (dto == null) {
       return null;
     }
@@ -244,7 +244,7 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
       }
     }
     
-    return NaturalPersonV2.builder()
+    return NaturalPerson.builder()
         .id(dto.getId())
         .name(dto.getName())
         .email(dto.getEmail())
@@ -254,15 +254,15 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         .aliasName(dto.getAliasName())
         .gender(gender)
         .genderPronoun(genderPronoun)
-        .address(convertDtoToAddressV2(dto.getAddress()))
+        .address(convertDtoToAddress(dto.getAddress()))
         .build();
   }
 
-  private AddressV2 convertDtoToAddressV2(com.agilecheckup.api.model.AddressDto dto) {
+  private Address convertDtoToAddress(com.agilecheckup.api.model.AddressDto dto) {
     if (dto == null) {
       return null;
     }
-    return AddressV2.builder()
+    return Address.builder()
         .id(dto.getId())
         .street(dto.getStreet())
         .city(dto.getCity())

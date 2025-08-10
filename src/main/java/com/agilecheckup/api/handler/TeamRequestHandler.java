@@ -2,10 +2,10 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.api.model.TeamResponse;
 import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.DepartmentV2;
-import com.agilecheckup.persistency.entity.TeamV2;
-import com.agilecheckup.service.DepartmentServiceV2;
-import com.agilecheckup.service.TeamServiceV2;
+import com.agilecheckup.persistency.entity.Department;
+import com.agilecheckup.persistency.entity.Team;
+import com.agilecheckup.service.DepartmentService;
+import com.agilecheckup.service.TeamService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -22,8 +22,8 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   // Regex patterns for path matching
   private static final Pattern GET_ALL_PATTERN = Pattern.compile("^/teams/?$");
   private static final Pattern SINGLE_RESOURCE_PATTERN = Pattern.compile("^/teams/([^/]+)/?$");
-  private final TeamServiceV2 teamService;
-  private final DepartmentServiceV2 departmentService;
+  private final TeamService teamService;
+  private final DepartmentService departmentService;
   private final ObjectMapper objectMapper;
 
   public TeamRequestHandler(ServiceComponent serviceComponent, ObjectMapper objectMapper) {
@@ -81,13 +81,13 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       
       // If departmentId is provided, filter by department
       if (departmentId != null) {
-        List<TeamV2> teams = teamService.findByDepartmentId(departmentId);
+        List<Team> teams = teamService.findByDepartmentId(departmentId);
         List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
         return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
       // If only tenantId is provided, return all teams for that tenant
       else {
-        List<TeamV2> teams = teamService.findAllByTenantId(tenantId);
+        List<Team> teams = teamService.findAllByTenantId(tenantId);
         List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
         return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
@@ -98,7 +98,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleGetById(String id) throws Exception {
-    Optional<TeamV2> team = teamService.findById(id);
+    Optional<Team> team = teamService.findById(id);
 
     if (team.isPresent()) {
       TeamResponse response = enrichTeamWithDepartment(team.get());
@@ -111,7 +111,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<TeamV2> team = teamService.create(
+    Optional<Team> team = teamService.create(
         (String) requestMap.get("tenantId"),
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
@@ -129,7 +129,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Optional<TeamV2> team = teamService.update(
+    Optional<Team> team = teamService.update(
         id,
         (String) requestMap.get("tenantId"),
         (String) requestMap.get("name"), 
@@ -146,7 +146,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<TeamV2> team = teamService.findById(id);
+    Optional<Team> team = teamService.findById(id);
 
     if (team.isPresent()) {
       teamService.deleteById(id);
@@ -161,12 +161,12 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     return path.substring(path.lastIndexOf("/") + 1);
   }
   
-  private TeamResponse enrichTeamWithDepartment(TeamV2 team) {
-    Optional<DepartmentV2> department = departmentService.findById(team.getDepartmentId());
-    return TeamResponse.fromTeamV2(team, department.orElse(null));
+  private TeamResponse enrichTeamWithDepartment(Team team) {
+    Optional<Department> department = departmentService.findById(team.getDepartmentId());
+    return TeamResponse.fromTeam(team, department.orElse(null));
   }
   
-  private List<TeamResponse> enrichTeamsWithDepartments(List<TeamV2> teams) {
+  private List<TeamResponse> enrichTeamsWithDepartments(List<Team> teams) {
     return teams.stream()
         .map(this::enrichTeamWithDepartment)
         .collect(Collectors.toList());

@@ -1,9 +1,14 @@
 package com.agilecheckup.api.handler;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
-import com.agilecheckup.persistency.entity.question.QuestionOption;
 import com.agilecheckup.persistency.entity.question.Question;
+import com.agilecheckup.persistency.entity.question.QuestionOption;
 import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.service.QuestionService;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
@@ -11,11 +16,6 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class QuestionRequestHandler implements RequestHandlerStrategy {
 
@@ -89,7 +89,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(405, "Method Not Allowed");
       }
 
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       context.getLogger().log("Error in question endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error processing question request: " + e.getMessage());
     }
@@ -111,7 +112,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(question.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Question not found");
     }
   }
@@ -133,19 +135,13 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
     Optional<Question> question = questionService.create(
-        (String) requestMap.get("question"),
-        questionType,
-        (String) requestMap.get("tenantId"),
-        Double.valueOf(requestMap.get("points").toString()),
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId"),
-        (String) requestMap.get("extraDescription")
+        (String) requestMap.get("question"), questionType, (String) requestMap.get("tenantId"), Double.valueOf(requestMap.get("points").toString()), (String) requestMap.get("assessmentMatrixId"), (String) requestMap.get("pillarId"), (String) requestMap.get("categoryId"), (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(question.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(400, "Failed to create question");
     }
   }
@@ -158,26 +154,17 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
 
     // Convert options list
     List<QuestionOption> options = objectMapper.convertValue(
-        requestMap.get("options"),
-        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
+        requestMap.get("options"), objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
     );
 
     Optional<Question> question = questionService.createCustomQuestion(
-        (String) requestMap.get("question"),
-        questionType,
-        (String) requestMap.get("tenantId"),
-        (Boolean) requestMap.get("isMultipleChoice"),
-        (Boolean) requestMap.get("showFlushed"),
-        options,
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId"),
-        (String) requestMap.get("extraDescription")
+        (String) requestMap.get("question"), questionType, (String) requestMap.get("tenantId"), (Boolean) requestMap.get("isMultipleChoice"), (Boolean) requestMap.get("showFlushed"), options, (String) requestMap.get("assessmentMatrixId"), (String) requestMap.get("pillarId"), (String) requestMap.get("categoryId"), (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(question.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(400, "Failed to create custom question");
     }
   }
@@ -189,20 +176,13 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     QuestionType questionType = QuestionType.valueOf((String) requestMap.get("questionType"));
 
     Optional<Question> question = questionService.update(
-        id,
-        (String) requestMap.get("question"),
-        questionType,
-        (String) requestMap.get("tenantId"),
-        Double.valueOf(requestMap.get("points").toString()),
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId"),
-        (String) requestMap.get("extraDescription")
+        id, (String) requestMap.get("question"), questionType, (String) requestMap.get("tenantId"), Double.valueOf(requestMap.get("points").toString()), (String) requestMap.get("assessmentMatrixId"), (String) requestMap.get("pillarId"), (String) requestMap.get("categoryId"), (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(question.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Question not found or update failed");
     }
   }
@@ -215,27 +195,17 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
 
     // Convert options list
     List<QuestionOption> options = objectMapper.convertValue(
-        requestMap.get("options"),
-        objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
+        requestMap.get("options"), objectMapper.getTypeFactory().constructCollectionType(List.class, QuestionOption.class)
     );
 
     Optional<Question> question = questionService.updateCustomQuestion(
-        id,
-        (String) requestMap.get("question"),
-        questionType,
-        (String) requestMap.get("tenantId"),
-        (Boolean) requestMap.get("isMultipleChoice"),
-        (Boolean) requestMap.get("showFlushed"),
-        options,
-        (String) requestMap.get("assessmentMatrixId"),
-        (String) requestMap.get("pillarId"),
-        (String) requestMap.get("categoryId"),
-        (String) requestMap.get("extraDescription")
+        id, (String) requestMap.get("question"), questionType, (String) requestMap.get("tenantId"), (Boolean) requestMap.get("isMultipleChoice"), (Boolean) requestMap.get("showFlushed"), options, (String) requestMap.get("assessmentMatrixId"), (String) requestMap.get("pillarId"), (String) requestMap.get("categoryId"), (String) requestMap.get("extraDescription")
     );
 
     if (question.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(question.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Question not found or update failed");
     }
   }
@@ -246,7 +216,8 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
     if (question.isPresent()) {
       questionService.delete(question.get());
       return ResponseBuilder.buildResponse(204, "");
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Question not found");
     }
   }
@@ -259,16 +230,17 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleGetNextQuestion(Map<String, String> queryParams) throws Exception {
     String employeeAssessmentId = queryParams != null ? queryParams.get("employeeAssessmentId") : null;
     String tenantId = queryParams != null ? queryParams.get("tenantId") : null;
-    
+
     if (employeeAssessmentId == null || tenantId == null) {
       return ResponseBuilder.buildResponse(400, "Missing required query parameters: employeeAssessmentId, tenantId");
     }
-    
+
     AnswerWithProgressResponse response = assessmentNavigationService.getNextUnansweredQuestion(employeeAssessmentId, tenantId);
-    
+
     if (response.getQuestion() == null) {
       return ResponseBuilder.buildResponse(404, objectMapper.writeValueAsString(response));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
     }
   }

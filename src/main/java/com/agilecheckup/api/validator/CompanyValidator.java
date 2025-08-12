@@ -1,9 +1,9 @@
 package com.agilecheckup.api.validator;
 
-import com.agilecheckup.api.model.Company;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import com.agilecheckup.api.model.Company;
 
 public class CompanyValidator {
 
@@ -20,7 +20,8 @@ public class CompanyValidator {
 
     if (company.getEmail() == null || company.getEmail().trim().isEmpty()) {
       errors.add("Email is required");
-    } else if (!isValidEmail(company.getEmail())) {
+    }
+    else if (!isValidEmail(company.getEmail())) {
       errors.add("Invalid email format");
     }
 

@@ -1,9 +1,9 @@
 package com.agilecheckup.api.handler;
 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 
 public class ResponseBuilder {
 

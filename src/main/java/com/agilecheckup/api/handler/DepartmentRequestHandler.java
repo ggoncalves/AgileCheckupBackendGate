@@ -1,16 +1,16 @@
 package com.agilecheckup.api.handler;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
+import com.agilecheckup.dagger.component.ServiceComponent;
+import com.agilecheckup.persistency.entity.Department;
 import com.agilecheckup.service.DepartmentService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.agilecheckup.dagger.component.ServiceComponent;
-import com.agilecheckup.persistency.entity.Department;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
@@ -60,7 +60,8 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(405, "Method Not Allowed");
       }
 
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       context.getLogger().log("Error in department endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error processing department request: " + e.getMessage());
     }
@@ -68,11 +69,12 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
   private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
     Map<String, String> queryParams = input.getQueryStringParameters();
-    
+
     if (queryParams != null && queryParams.containsKey("tenantId")) {
       String tenantId = queryParams.get("tenantId");
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(departmentService.findAllByTenantId(tenantId)));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(departmentService.findAll()));
     }
   }
@@ -82,7 +84,8 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
 
     if (department.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(department.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Department not found");
     }
   }
@@ -91,15 +94,13 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
     Optional<Department> department = departmentService.create(
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
-        (String) requestMap.get("companyId")
+        (String) requestMap.get("name"), (String) requestMap.get("description"), (String) requestMap.get("tenantId"), (String) requestMap.get("companyId")
     );
 
     if (department.isPresent()) {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(department.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(400, "Failed to create department");
     }
   }
@@ -108,16 +109,13 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
     Optional<Department> department = departmentService.update(
-        id,
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
-        (String) requestMap.get("companyId")
+        id, (String) requestMap.get("name"), (String) requestMap.get("description"), (String) requestMap.get("tenantId"), (String) requestMap.get("companyId")
     );
 
     if (department.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(department.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Department not found or update failed");
     }
   }
@@ -128,7 +126,8 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
     if (department.isPresent()) {
       departmentService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Department not found");
     }
   }

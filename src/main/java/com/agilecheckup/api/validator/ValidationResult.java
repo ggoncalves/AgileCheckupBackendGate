@@ -1,8 +1,8 @@
 package com.agilecheckup.api.validator;
 
-import lombok.Getter;
-
 import java.util.List;
+
+import lombok.Getter;
 
 public class ValidationResult {
   @Getter

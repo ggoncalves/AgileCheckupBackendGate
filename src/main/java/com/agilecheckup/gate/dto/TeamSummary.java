@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TeamSummary {
-    
-    private String teamId;
-    private String teamName;
-    private int totalEmployees;
-    private int completedAssessments;
-    private double completionPercentage;
-    private Double averageScore;
+
+  private String teamId;
+  private String teamName;
+  private int totalEmployees;
+  private int completedAssessments;
+  private double completionPercentage;
+  private Double averageScore;
 }

@@ -1,11 +1,11 @@
 package com.agilecheckup.gate.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 /**
  * Response DTO for assessment matrix dashboard endpoint.
@@ -18,12 +18,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DashboardResponse {
-    
-    private String matrixId;
-    private String matrixName;
-    private Object potentialScore;
-    private List<TeamSummary> teamSummaries;
-    private EmployeePageResponse employees;
-    private int totalEmployees;
-    private int completedAssessments;
+
+  private String matrixId;
+  private String matrixName;
+  private Object potentialScore;
+  private List<TeamSummary> teamSummaries;
+  private EmployeePageResponse employees;
+  private int totalEmployees;
+  private int completedAssessments;
 }

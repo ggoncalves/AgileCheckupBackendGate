@@ -1,5 +1,32 @@
 package com.agilecheckup.api.handler;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
 import com.agilecheckup.persistency.entity.AssessmentConfiguration;
@@ -15,32 +42,6 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.anyMap;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentMatrixRequestHandlerTest {
@@ -84,44 +85,12 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldSuccessfullyCreateAssessmentMatrixWithManualMapBuilding() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Engineering Matrix\",\n" +
-        "  \"description\": \"Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {\n" +
-        "    \"p1\": {\n" +
-        "      \"name\": \"Technical Skills\",\n" +
-        "      \"description\": \"Technical knowledge and abilities\",\n" +
-        "      \"categoryMap\": {\n" +
-        "        \"c1\": {\n" +
-        "          \"name\": \"Programming\",\n" +
-        "          \"description\": \"Programming skills and knowledge\"\n" +
-        "        },\n" +
-        "        \"c2\": {\n" +
-        "          \"name\": \"Architecture\",\n" +
-        "          \"description\": \"System design and architecture\"\n" +
-        "        }\n" +
-        "      }\n" +
-        "    }\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Engineering Matrix\",\n" + "  \"description\": \"Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {\n" + "    \"p1\": {\n" + "      \"name\": \"Technical Skills\",\n" + "      \"description\": \"Technical knowledge and abilities\",\n" + "      \"categoryMap\": {\n" + "        \"c1\": {\n" + "          \"name\": \"Programming\",\n" + "          \"description\": \"Programming skills and knowledge\"\n" + "        },\n" + "        \"c2\": {\n" + "          \"name\": \"Architecture\",\n" + "          \"description\": \"System design and architecture\"\n" + "        }\n" + "      }\n" + "    }\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
     // Create a sample assessment matrix to return
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-matrix-id")
-        .name("Engineering Matrix")
-        .description("Competency assessment for engineering roles")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-matrix-id").name("Engineering Matrix").description("Competency assessment for engineering roles").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     // Set up the service to return the assessment matrix, capture arguments
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
@@ -132,12 +101,7 @@ class AssessmentMatrixRequestHandlerTest {
 
     // Then
     verify(assessmentMatrixService).create(
-        eq("Engineering Matrix"),
-        eq("Competency assessment for engineering roles"),
-        eq("tenant-test-id-123"),
-        eq("3837551b-20f2-41eb-9779-8203a5209c45"),
-        pillarMapCaptor.capture(),
-        eq(null));
+        eq("Engineering Matrix"), eq("Competency assessment for engineering roles"), eq("tenant-test-id-123"), eq("3837551b-20f2-41eb-9779-8203a5209c45"), pillarMapCaptor.capture(), eq(null));
 
     // Verify the pillar map was built correctly
     Map<String, Pillar> capturedPillarMap = pillarMapCaptor.getValue();
@@ -164,30 +128,11 @@ class AssessmentMatrixRequestHandlerTest {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("tenantId", tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
-    AssessmentMatrix matrix1 = AssessmentMatrix.builder()
-        .id("matrix-1")
-        .name("Engineering Matrix")
-        .description("For engineering assessments")
-        .tenantId(tenantId)
-        .performanceCycleId("cycle-1")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix matrix1 = AssessmentMatrix.builder().id("matrix-1").name("Engineering Matrix").description("For engineering assessments").tenantId(tenantId).performanceCycleId("cycle-1").pillarMap(new HashMap<>()).questionCount(0).build();
 
-    AssessmentMatrix matrix2 = AssessmentMatrix.builder()
-        .id("matrix-2")
-        .name("Sales Matrix")
-        .description("For sales assessments")
-        .tenantId(tenantId)
-        .performanceCycleId("cycle-2")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix matrix2 = AssessmentMatrix.builder().id("matrix-2").name("Sales Matrix").description("For sales assessments").tenantId(tenantId).performanceCycleId("cycle-2").pillarMap(new HashMap<>()).questionCount(0).build();
 
     List<AssessmentMatrix> matrices = Arrays.asList(matrix1, matrix2);
 
@@ -207,9 +152,7 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void handleGetAll_whenNoTenantIdProvided_shouldReturnBadRequest() {
     // Given
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("GET");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("GET");
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -224,34 +167,11 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldCreateAssessmentMatrixWithConfiguration() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Engineering Matrix\",\n" +
-        "  \"description\": \"Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {},\n" +
-        "  \"configuration\": {\n" +
-        "    \"allowQuestionReview\": false,\n" +
-        "    \"requireAllQuestions\": true,\n" +
-        "    \"autoSave\": false,\n" +
-        "    \"navigationMode\": \"SEQUENTIAL\"\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Engineering Matrix\",\n" + "  \"description\": \"Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {},\n" + "  \"configuration\": {\n" + "    \"allowQuestionReview\": false,\n" + "    \"requireAllQuestions\": true,\n" + "    \"autoSave\": false,\n" + "    \"navigationMode\": \"SEQUENTIAL\"\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-matrix-id")
-        .name("Engineering Matrix")
-        .description("Competency assessment for engineering roles")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-matrix-id").name("Engineering Matrix").description("Competency assessment for engineering roles").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
@@ -261,12 +181,7 @@ class AssessmentMatrixRequestHandlerTest {
 
     // Then
     verify(assessmentMatrixService).create(
-        eq("Engineering Matrix"),
-        eq("Competency assessment for engineering roles"),
-        eq("tenant-test-id-123"),
-        eq("3837551b-20f2-41eb-9779-8203a5209c45"),
-        anyMap(),
-        configurationCaptor.capture());
+        eq("Engineering Matrix"), eq("Competency assessment for engineering roles"), eq("tenant-test-id-123"), eq("3837551b-20f2-41eb-9779-8203a5209c45"), anyMap(), configurationCaptor.capture());
 
     AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
@@ -280,31 +195,11 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldCreateAssessmentMatrixWithDefaultConfigurationValues() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Engineering Matrix\",\n" +
-        "  \"description\": \"Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {},\n" +
-        "  \"configuration\": {\n" +
-        "    \"navigationMode\": \"FREE_FORM\"\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Engineering Matrix\",\n" + "  \"description\": \"Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {},\n" + "  \"configuration\": {\n" + "    \"navigationMode\": \"FREE_FORM\"\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-matrix-id")
-        .name("Engineering Matrix")
-        .description("Competency assessment for engineering roles")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-matrix-id").name("Engineering Matrix").description("Competency assessment for engineering roles").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
@@ -328,28 +223,11 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldCreateAssessmentMatrixWithoutConfiguration() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Engineering Matrix\",\n" +
-        "  \"description\": \"Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {}\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Engineering Matrix\",\n" + "  \"description\": \"Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {}\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-matrix-id")
-        .name("Engineering Matrix")
-        .description("Competency assessment for engineering roles")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-matrix-id").name("Engineering Matrix").description("Competency assessment for engineering roles").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
@@ -370,31 +248,11 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldHandleInvalidNavigationModeGracefully() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Engineering Matrix\",\n" +
-        "  \"description\": \"Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {},\n" +
-        "  \"configuration\": {\n" +
-        "    \"navigationMode\": \"INVALID_MODE\"\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Engineering Matrix\",\n" + "  \"description\": \"Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {},\n" + "  \"configuration\": {\n" + "    \"navigationMode\": \"INVALID_MODE\"\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-matrix-id")
-        .name("Engineering Matrix")
-        .description("Competency assessment for engineering roles")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-matrix-id").name("Engineering Matrix").description("Competency assessment for engineering roles").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(
         anyString(), anyString(), anyString(), anyString(), anyMap(), any());
@@ -415,34 +273,11 @@ class AssessmentMatrixRequestHandlerTest {
   @Test
   void shouldUpdateAssessmentMatrixWithConfiguration() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Updated Engineering Matrix\",\n" +
-        "  \"description\": \"Updated competency assessment\",\n" +
-        "  \"tenantId\": \"tenant-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {},\n" +
-        "  \"configuration\": {\n" +
-        "    \"allowQuestionReview\": true,\n" +
-        "    \"requireAllQuestions\": false,\n" +
-        "    \"autoSave\": true,\n" +
-        "    \"navigationMode\": \"RANDOM\"\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Updated Engineering Matrix\",\n" + "  \"description\": \"Updated competency assessment\",\n" + "  \"tenantId\": \"tenant-test-id-123\",\n" + "  \"performanceCycleId\": \"3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {},\n" + "  \"configuration\": {\n" + "    \"allowQuestionReview\": true,\n" + "    \"requireAllQuestions\": false,\n" + "    \"autoSave\": true,\n" + "    \"navigationMode\": \"RANDOM\"\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/matrix-123")
-        .withHttpMethod("PUT")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/matrix-123").withHttpMethod("PUT").withBody(requestBody);
 
-    AssessmentMatrix updatedMatrix = AssessmentMatrix.builder()
-        .id("matrix-123")
-        .name("Updated Engineering Matrix")
-        .description("Updated competency assessment")
-        .tenantId("tenant-test-id-123")
-        .performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45")
-        .pillarMap(new HashMap<>())
-        .questionCount(0)
-        .build();
+    AssessmentMatrix updatedMatrix = AssessmentMatrix.builder().id("matrix-123").name("Updated Engineering Matrix").description("Updated competency assessment").tenantId("tenant-test-id-123").performanceCycleId("3837551b-20f2-41eb-9779-8203a5209c45").pillarMap(new HashMap<>()).questionCount(0).build();
 
     doReturn(Optional.of(updatedMatrix)).when(assessmentMatrixService).update(
         anyString(), anyString(), anyString(), anyString(), anyString(), anyMap(), any());
@@ -452,13 +287,7 @@ class AssessmentMatrixRequestHandlerTest {
 
     // Then
     verify(assessmentMatrixService).update(
-        eq("matrix-123"),
-        eq("Updated Engineering Matrix"),
-        eq("Updated competency assessment"),
-        eq("tenant-test-id-123"),
-        eq("3837551b-20f2-41eb-9779-8203a5209c45"),
-        anyMap(),
-        configurationCaptor.capture());
+        eq("matrix-123"), eq("Updated Engineering Matrix"), eq("Updated competency assessment"), eq("tenant-test-id-123"), eq("3837551b-20f2-41eb-9779-8203a5209c45"), anyMap(), configurationCaptor.capture());
 
     AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
     assertThat(capturedConfig.getAllowQuestionReview()).isTrue();
@@ -475,23 +304,11 @@ class AssessmentMatrixRequestHandlerTest {
     String matrixId = "matrix-123";
     String tenantId = "tenant-456";
 
-    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
-        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
-            .assessmentMatrixId(matrixId)
-            .matrixName("Test Matrix")
-            .teamSummaries(new ArrayList<>())
-            .employeeSummaries(new ArrayList<>())
-            .totalEmployees(5)
-            .completedAssessments(3)
-            .build();
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData = com.agilecheckup.service.dto.AssessmentDashboardData.builder().assessmentMatrixId(matrixId).matrixName("Test Matrix").teamSummaries(new ArrayList<>()).employeeSummaries(new ArrayList<>()).totalEmployees(5).completedAssessments(3).build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -511,9 +328,7 @@ class AssessmentMatrixRequestHandlerTest {
     // Given
     String matrixId = "matrix-123";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET");
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -529,13 +344,9 @@ class AssessmentMatrixRequestHandlerTest {
     String matrixId = "nonexistent-matrix";
     String tenantId = "tenant-456";
 
-    doReturn(Optional.empty()).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.empty()).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -556,28 +367,16 @@ class AssessmentMatrixRequestHandlerTest {
     // Create larger dataset for pagination testing
     List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> employeeSummaries = createLargeEmployeeSummaryList(10);
 
-    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
-        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
-            .assessmentMatrixId(matrixId)
-            .matrixName("Test Matrix")
-            .teamSummaries(createTestTeamSummaries())
-            .employeeSummaries(employeeSummaries)
-            .totalEmployees(10)
-            .completedAssessments(6)
-            .build();
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData = com.agilecheckup.service.dto.AssessmentDashboardData.builder().assessmentMatrixId(matrixId).matrixName("Test Matrix").teamSummaries(createTestTeamSummaries()).employeeSummaries(employeeSummaries).totalEmployees(10).completedAssessments(6).build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("tenantId", tenantId);
     queryParams.put("page", "2");
     queryParams.put("pageSize", "3");
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -608,10 +407,7 @@ class AssessmentMatrixRequestHandlerTest {
     queryParams.put("page", "0"); // Invalid: page must be >= 1
     queryParams.put("pageSize", "300"); // Invalid: pageSize must be <= 200
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -627,28 +423,16 @@ class AssessmentMatrixRequestHandlerTest {
     String matrixId = "matrix-123";
     String tenantId = "tenant-456";
 
-    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
-        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
-            .assessmentMatrixId(matrixId)
-            .matrixName("Test Matrix")
-            .teamSummaries(new ArrayList<>())
-            .employeeSummaries(new ArrayList<>())
-            .totalEmployees(5)
-            .completedAssessments(3)
-            .build();
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData = com.agilecheckup.service.dto.AssessmentDashboardData.builder().assessmentMatrixId(matrixId).matrixName("Test Matrix").teamSummaries(new ArrayList<>()).employeeSummaries(new ArrayList<>()).totalEmployees(5).completedAssessments(3).build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("tenantId", tenantId);
     queryParams.put("page", "invalid"); // Non-numeric
     queryParams.put("pageSize", "also-invalid"); // Non-numeric
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -671,24 +455,11 @@ class AssessmentMatrixRequestHandlerTest {
     // Create consistent employee data with 10 employees
     List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> employeeSummaries = createLargeEmployeeSummaryList(10);
 
-    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
-        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
-            .assessmentMatrixId(matrixId)
-            .matrixName("Complex Test Matrix")
-            .potentialScore(createTestPotentialScore())
-            .teamSummaries(createTestTeamSummaries())
-            .employeeSummaries(employeeSummaries)
-            .totalEmployees(10)
-            .completedAssessments(6)
-            .build();
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData = com.agilecheckup.service.dto.AssessmentDashboardData.builder().assessmentMatrixId(matrixId).matrixName("Complex Test Matrix").potentialScore(createTestPotentialScore()).teamSummaries(createTestTeamSummaries()).employeeSummaries(employeeSummaries).totalEmployees(10).completedAssessments(6).build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -727,31 +498,18 @@ class AssessmentMatrixRequestHandlerTest {
     String tenantId = "tenant-456";
 
     // Create large dataset
-    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> largeEmployeeList =
-        createLargeEmployeeSummaryList(150); // 150 employees
+    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> largeEmployeeList = createLargeEmployeeSummaryList(150); // 150 employees
 
-    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData =
-        com.agilecheckup.service.dto.AssessmentDashboardData.builder()
-            .assessmentMatrixId(matrixId)
-            .matrixName("Large Matrix")
-            .teamSummaries(createTestTeamSummaries())
-            .employeeSummaries(largeEmployeeList)
-            .totalEmployees(150)
-            .completedAssessments(100)
-            .build();
+    com.agilecheckup.service.dto.AssessmentDashboardData dashboardData = com.agilecheckup.service.dto.AssessmentDashboardData.builder().assessmentMatrixId(matrixId).matrixName("Large Matrix").teamSummaries(createTestTeamSummaries()).employeeSummaries(largeEmployeeList).totalEmployees(150).completedAssessments(100).build();
 
-    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService)
-        .getAssessmentDashboard(matrixId, tenantId);
+    doReturn(Optional.of(dashboardData)).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("tenantId", tenantId);
     queryParams.put("page", "3");
     queryParams.put("pageSize", "50");
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -777,13 +535,9 @@ class AssessmentMatrixRequestHandlerTest {
     String matrixId = "matrix-123";
     String tenantId = "tenant-456";
 
-    doThrow(new RuntimeException("Database connection failed"))
-        .when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
+    doThrow(new RuntimeException("Database connection failed")).when(assessmentMatrixService).getAssessmentDashboard(matrixId, tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices/" + matrixId + "/dashboard")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + matrixId + "/dashboard").withHttpMethod("GET").withQueryStringParameters(Collections.singletonMap("tenantId", tenantId));
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -799,23 +553,9 @@ class AssessmentMatrixRequestHandlerTest {
   private List<com.agilecheckup.service.dto.TeamAssessmentSummary> createTestTeamSummaries() {
     List<com.agilecheckup.service.dto.TeamAssessmentSummary> summaries = new ArrayList<>();
 
-    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder()
-        .teamId("team-1")
-        .teamName("Engineering Team")
-        .totalEmployees(5)
-        .completedAssessments(3)
-        .completionPercentage(60.0)
-        .averageScore(85.5)
-        .build());
+    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder().teamId("team-1").teamName("Engineering Team").totalEmployees(5).completedAssessments(3).completionPercentage(60.0).averageScore(85.5).build());
 
-    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder()
-        .teamId("team-2")
-        .teamName("Design Team")
-        .totalEmployees(3)
-        .completedAssessments(2)
-        .completionPercentage(66.67)
-        .averageScore(78.0)
-        .build());
+    summaries.add(com.agilecheckup.service.dto.TeamAssessmentSummary.builder().teamId("team-2").teamName("Design Team").totalEmployees(3).completedAssessments(2).completionPercentage(66.67).averageScore(78.0).build());
 
     return summaries;
   }
@@ -824,31 +564,9 @@ class AssessmentMatrixRequestHandlerTest {
   private List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> createTestEmployeeSummaries() {
     List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> summaries = new ArrayList<>();
 
-    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
-        .employeeAssessmentId("assessment-1")
-        .employeeId("emp1")
-        .employeeName("John Doe")
-        .employeeEmail("john@example.com")
-        .teamId("team-1")
-        .teamName("Engineering Team")
-        .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED)
-        .currentScore(85.0)
-        .answeredQuestionCount(15)
-        .lastActivityDate(java.time.LocalDateTime.now())
-        .build());
+    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder().employeeAssessmentId("assessment-1").employeeId("emp1").employeeName("John Doe").employeeEmail("john@example.com").teamId("team-1").teamName("Engineering Team").assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED).currentScore(85.0).answeredQuestionCount(15).lastActivityDate(java.time.LocalDateTime.now()).build());
 
-    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
-        .employeeAssessmentId("assessment-2")
-        .employeeId("emp2")
-        .employeeName("Jane Smith")
-        .employeeEmail("jane@example.com")
-        .teamId("team-1")
-        .teamName("Engineering Team")
-        .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
-        .currentScore(null)
-        .answeredQuestionCount(8)
-        .lastActivityDate(java.time.LocalDateTime.now().minusHours(2))
-        .build());
+    summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder().employeeAssessmentId("assessment-2").employeeId("emp2").employeeName("Jane Smith").employeeEmail("jane@example.com").teamId("team-1").teamName("Engineering Team").assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS).currentScore(null).answeredQuestionCount(8).lastActivityDate(java.time.LocalDateTime.now().minusHours(2)).build());
 
     return summaries;
   }
@@ -858,90 +576,27 @@ class AssessmentMatrixRequestHandlerTest {
     List<EmployeeAssessmentSummary> summaries = new ArrayList<>();
 
     for (int i = 1; i <= count; i++) {
-      summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
-          .employeeAssessmentId("assessment-" + i)
-          .employeeId("emp" + i)
-          .employeeName("Employee " + i)
-          .employeeEmail("employee" + i + "@example.com")
-          .teamId("team-" + ((i % 5) + 1))
-          .teamName("Team " + ((i % 5) + 1))
-          .assessmentStatus(i % 3 == 0 ?
-              com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED :
-              com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
-          .currentScore(i % 3 == 0 ? Double.valueOf(70 + (i % 30)) : null)
-          .answeredQuestionCount(i % 20)
-          .lastActivityDate(java.time.LocalDateTime.now().minusHours(i % 24))
-          .build());
+      summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder().employeeAssessmentId("assessment-" + i).employeeId("emp" + i).employeeName("Employee " + i).employeeEmail("employee" + i + "@example.com").teamId("team-" + ((i % 5) + 1)).teamName("Team " + ((i % 5) + 1)).assessmentStatus(i % 3 == 0 ? com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED : com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS).currentScore(i % 3 == 0 ? Double.valueOf(70 + (i % 30)) : null).answeredQuestionCount(i % 20).lastActivityDate(java.time.LocalDateTime.now().minusHours(i % 24)).build());
     }
 
     return summaries;
   }
 
   private PotentialScore createTestPotentialScore() {
-    return PotentialScore.builder()
-        .score(100.0)
-        .pillarIdToPillarScoreMap(new HashMap<>())
-        .build();
+    return PotentialScore.builder().score(100.0).pillarIdToPillarScoreMap(new HashMap<>()).build();
   }
 
   @Test
   void shouldSuccessfullyCreateAssessmentMatrixWithPillarAndCategory() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \" Engineering Matrix\",\n" +
-        "  \"description\": \" Competency assessment for engineering roles\",\n" +
-        "  \"tenantId\": \"tenant-v2-test-id-123\",\n" +
-        "  \"performanceCycleId\": \"v2-3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
-        "  \"pillarMap\": {\n" +
-        "    \"p1-v2\": {\n" +
-        "      \"name\": \"Technical Skills \",\n" +
-        "      \"description\": \" Technical knowledge and abilities\",\n" +
-        "      \"categoryMap\": {\n" +
-        "        \"c1-v2\": {\n" +
-        "          \"name\": \"Programming \",\n" +
-        "          \"description\": \" Programming skills and knowledge\"\n" +
-        "        },\n" +
-        "        \"c2-v2\": {\n" +
-        "          \"name\": \"Architecture \",\n" +
-        "          \"description\": \" System design and architecture\"\n" +
-        "        }\n" +
-        "      }\n" +
-        "    },\n" +
-        "    \"p2-v2\": {\n" +
-        "      \"name\": \"Soft Skills \",\n" +
-        "      \"description\": \" Communication and teamwork\",\n" +
-        "      \"categoryMap\": {\n" +
-        "        \"c3-v2\": {\n" +
-        "          \"name\": \"Leadership \",\n" +
-        "          \"description\": \" Leadership abilities\"\n" +
-        "        }\n" +
-        "      }\n" +
-        "    }\n" +
-        "  },\n" +
-        "  \"configuration\": {\n" +
-        "    \"allowQuestionReview\": false,\n" +
-        "    \"requireAllQuestions\": true,\n" +
-        "    \"autoSave\": false,\n" +
-        "    \"navigationMode\": \"SEQUENTIAL\"\n" +
-        "  }\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \" Engineering Matrix\",\n" + "  \"description\": \" Competency assessment for engineering roles\",\n" + "  \"tenantId\": \"tenant-v2-test-id-123\",\n" + "  \"performanceCycleId\": \"v2-3837551b-20f2-41eb-9779-8203a5209c45\",\n" + "  \"pillarMap\": {\n" + "    \"p1-v2\": {\n" + "      \"name\": \"Technical Skills \",\n" + "      \"description\": \" Technical knowledge and abilities\",\n" + "      \"categoryMap\": {\n" + "        \"c1-v2\": {\n" + "          \"name\": \"Programming \",\n" + "          \"description\": \" Programming skills and knowledge\"\n" + "        },\n" + "        \"c2-v2\": {\n" + "          \"name\": \"Architecture \",\n" + "          \"description\": \" System design and architecture\"\n" + "        }\n" + "      }\n" + "    },\n" + "    \"p2-v2\": {\n" + "      \"name\": \"Soft Skills \",\n" + "      \"description\": \" Communication and teamwork\",\n" + "      \"categoryMap\": {\n" + "        \"c3-v2\": {\n" + "          \"name\": \"Leadership \",\n" + "          \"description\": \" Leadership abilities\"\n" + "        }\n" + "      }\n" + "    }\n" + "  },\n" + "  \"configuration\": {\n" + "    \"allowQuestionReview\": false,\n" + "    \"requireAllQuestions\": true,\n" + "    \"autoSave\": false,\n" + "    \"navigationMode\": \"SEQUENTIAL\"\n" + "  }\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/assessmentmatrices")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices").withHttpMethod("POST").withBody(requestBody);
 
     // Create a sample assessment matrix to return
-    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
-        .id("new-v2-matrix-id")
-        .name(" Engineering Matrix")
-        .description(" Competency assessment for engineering roles")
-        .tenantId("tenant-v2-test-id-123")
-        .performanceCycleId("v2-3837551b-20f2-41eb-9779-8203a5209c45")
-        .build();
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder().id("new-v2-matrix-id").name(" Engineering Matrix").description(" Competency assessment for engineering roles").tenantId("tenant-v2-test-id-123").performanceCycleId("v2-3837551b-20f2-41eb-9779-8203a5209c45").build();
 
-    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService)
-        .create(anyString(), anyString(), anyString(), anyString(), any(), any());
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService).create(anyString(), anyString(), anyString(), anyString(), any(), any());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -949,12 +604,7 @@ class AssessmentMatrixRequestHandlerTest {
     // Then
     // Verify the service was called with correct parameters
     verify(assessmentMatrixService).create(
-        eq(" Engineering Matrix"),
-        eq(" Competency assessment for engineering roles"),
-        eq("tenant-v2-test-id-123"),
-        eq("v2-3837551b-20f2-41eb-9779-8203a5209c45"),
-        pillarMapCaptor.capture(),
-        configurationCaptor.capture());
+        eq(" Engineering Matrix"), eq(" Competency assessment for engineering roles"), eq("tenant-v2-test-id-123"), eq("v2-3837551b-20f2-41eb-9779-8203a5209c45"), pillarMapCaptor.capture(), configurationCaptor.capture());
 
     // Verify the  pillar map was built correctly
     Map<String, Pillar> capturedPillarMap = pillarMapCaptor.getValue();

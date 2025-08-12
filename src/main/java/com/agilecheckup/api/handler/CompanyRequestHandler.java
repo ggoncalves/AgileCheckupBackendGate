@@ -1,5 +1,8 @@
 package com.agilecheckup.api.handler;
 
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 import com.agilecheckup.api.validator.CompanyValidator;
 import com.agilecheckup.api.validator.ValidationResult;
 import com.agilecheckup.dagger.component.ServiceComponent;
@@ -17,9 +20,6 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class CompanyRequestHandler implements RequestHandlerStrategy {
 
@@ -68,10 +68,12 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(405, "Method Not Allowed");
       }
 
-    } catch (IllegalArgumentException e) {
+    }
+    catch (IllegalArgumentException e) {
       context.getLogger().log("Validation error in company endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(400, "Validation error: " + e.getMessage());
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       context.getLogger().log("Error in company endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error processing company request: " + e.getMessage());
     }
@@ -86,7 +88,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
 
     if (company.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(company.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Company not found");
     }
   }
@@ -108,22 +111,13 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     Address address = convertDtoToAddress(companyBody.getAddress());
 
     Optional<Company> company = companyService.create(
-        companyBody.getDocumentNumber(),
-        companyBody.getName(),
-        companyBody.getEmail(),
-        companyBody.getDescription(),
-        companyBody.getTenantId(),
-        size,
-        industry,
-        companyBody.getWebsite(),
-        companyBody.getLegalName(),
-        contactPerson,
-        address
+        companyBody.getDocumentNumber(), companyBody.getName(), companyBody.getEmail(), companyBody.getDescription(), companyBody.getTenantId(), size, industry, companyBody.getWebsite(), companyBody.getLegalName(), contactPerson, address
     );
 
     if (company.isPresent()) {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(company.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(400, "Failed to create company");
     }
   }
@@ -146,23 +140,13 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
 
     // Use update method
     Optional<Company> company = companyService.update(
-        id,
-        companyBody.getDocumentNumber(),
-        companyBody.getName(),
-        companyBody.getEmail(),
-        companyBody.getDescription(),
-        companyBody.getTenantId(),
-        size,
-        industry,
-        companyBody.getWebsite(),
-        companyBody.getLegalName(),
-        contactPerson,
-        address
+        id, companyBody.getDocumentNumber(), companyBody.getName(), companyBody.getEmail(), companyBody.getDescription(), companyBody.getTenantId(), size, industry, companyBody.getWebsite(), companyBody.getLegalName(), contactPerson, address
     );
 
     if (company.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(company.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Company not found or update failed");
     }
   }
@@ -177,7 +161,8 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     if (company.isPresent()) {
       companyService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Company not found");
     }
   }
@@ -193,9 +178,9 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     }
     try {
       return CompanySize.valueOf(sizeStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid company size: " + sizeStr +
-          ". Valid values are: STARTUP, SMALL, MEDIUM, LARGE, ENTERPRISE");
+    }
+    catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid company size: " + sizeStr + ". Valid values are: STARTUP, SMALL, MEDIUM, LARGE, ENTERPRISE");
     }
   }
 
@@ -205,9 +190,9 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     }
     try {
       return Industry.valueOf(industryStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid industry: " + industryStr +
-          ". Valid values are: TECHNOLOGY, FINANCE, HEALTHCARE, MANUFACTURING, RETAIL, EDUCATION, CONSULTING, GOVERNMENT, NONPROFIT, OTHER");
+    }
+    catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid industry: " + industryStr + ". Valid values are: TECHNOLOGY, FINANCE, HEALTHCARE, MANUFACTURING, RETAIL, EDUCATION, CONSULTING, GOVERNMENT, NONPROFIT, OTHER");
     }
   }
 
@@ -215,60 +200,45 @@ public class CompanyRequestHandler implements RequestHandlerStrategy {
     if (dto == null) {
       return null;
     }
-    
+
     // Parse enums from string
     PersonDocumentType docType = null;
     if (dto.getPersonDocumentType() != null && !dto.getPersonDocumentType().trim().isEmpty()) {
       try {
         docType = PersonDocumentType.valueOf(dto.getPersonDocumentType());
-      } catch (IllegalArgumentException e) {
+      }
+      catch (IllegalArgumentException e) {
         // Log warning but continue
       }
     }
-    
+
     Gender gender = null;
     if (dto.getGender() != null && !dto.getGender().trim().isEmpty()) {
       try {
         gender = Gender.valueOf(dto.getGender());
-      } catch (IllegalArgumentException e) {
+      }
+      catch (IllegalArgumentException e) {
         // Log warning but continue
       }
     }
-    
+
     GenderPronoun genderPronoun = null;
     if (dto.getGenderPronoun() != null && !dto.getGenderPronoun().trim().isEmpty()) {
       try {
         genderPronoun = GenderPronoun.valueOf(dto.getGenderPronoun());
-      } catch (IllegalArgumentException e) {
+      }
+      catch (IllegalArgumentException e) {
         // Log warning but continue
       }
     }
-    
-    return NaturalPerson.builder()
-        .id(dto.getId())
-        .name(dto.getName())
-        .email(dto.getEmail())
-        .phone(dto.getPhone())
-        .documentNumber(dto.getDocumentNumber())
-        .personDocumentType(docType)
-        .aliasName(dto.getAliasName())
-        .gender(gender)
-        .genderPronoun(genderPronoun)
-        .address(convertDtoToAddress(dto.getAddress()))
-        .build();
+
+    return NaturalPerson.builder().id(dto.getId()).name(dto.getName()).email(dto.getEmail()).phone(dto.getPhone()).documentNumber(dto.getDocumentNumber()).personDocumentType(docType).aliasName(dto.getAliasName()).gender(gender).genderPronoun(genderPronoun).address(convertDtoToAddress(dto.getAddress())).build();
   }
 
   private Address convertDtoToAddress(com.agilecheckup.api.model.AddressDto dto) {
     if (dto == null) {
       return null;
     }
-    return Address.builder()
-        .id(dto.getId())
-        .street(dto.getStreet())
-        .city(dto.getCity())
-        .state(dto.getState())
-        .country(dto.getCountry())
-        .zipcode(dto.getZipcode())
-        .build();
+    return Address.builder().id(dto.getId()).street(dto.getStreet()).city(dto.getCity()).state(dto.getState()).country(dto.getCountry()).zipcode(dto.getZipcode()).build();
   }
 }

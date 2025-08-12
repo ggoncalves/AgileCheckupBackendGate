@@ -1,5 +1,12 @@
 package com.agilecheckup.api.handler;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycle;
 import com.agilecheckup.service.PerformanceCycleService;
@@ -7,13 +14,6 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
 
@@ -62,7 +62,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
         return ResponseBuilder.buildResponse(405, "Method Not Allowed");
       }
 
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       context.getLogger().log("Error in performance cycle endpoint: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Error processing performance cycle request: " + e.getMessage());
     }
@@ -70,12 +71,12 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
 
   private APIGatewayProxyResponseEvent handleGetAll(APIGatewayProxyRequestEvent input) throws Exception {
     Map<String, String> queryParams = input.getQueryStringParameters();
-    
+
     if (queryParams != null && queryParams.containsKey("tenantId")) {
       String tenantId = queryParams.get("tenantId");
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycleService.findAllByTenantId(tenantId)));
     }
-    
+
     // No tenantId provided - return error for security
     return ResponseBuilder.buildResponse(400, "tenantId is required");
   }
@@ -85,7 +86,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
 
     if (performanceCycle.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycle.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Performance cycle not found");
     }
   }
@@ -98,18 +100,13 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.create(
         (String) requestMap.get("tenantId"),  //  signature: tenantId first
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
-        (String) requestMap.get("companyId"),
-        (Boolean) requestMap.get("isActive"),
-        (Boolean) requestMap.get("isTimeSensitive"),
-        startDate,
-        endDate
+        (String) requestMap.get("name"), (String) requestMap.get("description"), (String) requestMap.get("companyId"), (Boolean) requestMap.get("isActive"), (Boolean) requestMap.get("isTimeSensitive"), startDate, endDate
     );
 
     if (performanceCycle.isPresent()) {
       return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(performanceCycle.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(400, "Failed to create performance cycle");
     }
   }
@@ -121,20 +118,14 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     LocalDate endDate = parseLocalDate(requestMap.get("endDate"));
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.update(
-        id,
-        (String) requestMap.get("tenantId"),  //  signature: tenantId second
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
-        (String) requestMap.get("companyId"),
-        (Boolean) requestMap.get("isActive"),
-        (Boolean) requestMap.get("isTimeSensitive"),
-        startDate,
-        endDate
+        id, (String) requestMap.get("tenantId"),  //  signature: tenantId second
+        (String) requestMap.get("name"), (String) requestMap.get("description"), (String) requestMap.get("companyId"), (Boolean) requestMap.get("isActive"), (Boolean) requestMap.get("isTimeSensitive"), startDate, endDate
     );
 
     if (performanceCycle.isPresent()) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(performanceCycle.get()));
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Performance cycle not found or update failed");
     }
   }
@@ -145,7 +136,8 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     if (performanceCycle.isPresent()) {
       performanceCycleService.deleteById(id);  //  uses deleteById(id) instead of delete(entity)
       return ResponseBuilder.buildResponse(204, "");
-    } else {
+    }
+    else {
       return ResponseBuilder.buildResponse(404, "Performance cycle not found");
     }
   }
@@ -167,31 +159,31 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     if (dateValue == null) {
       return null;
     }
-    
+
     if (dateValue instanceof String) {
       String dateString = (String) dateValue;
       if (dateString.trim().isEmpty()) {
         return null;
       }
-      
+
       try {
         // First try simple YYYY-MM-DD format
         return LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE);
-      } catch (DateTimeParseException e1) {
+      }
+      catch (DateTimeParseException e1) {
         try {
           // If that fails, try ISO 8601 format with time and timezone
           // Parse as Instant and convert to LocalDate
           java.time.Instant instant = java.time.Instant.parse(dateString);
           return instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-        } catch (DateTimeParseException e2) {
-          throw new IllegalArgumentException("Invalid date format: " + dateValue + 
-              ". Expected format: YYYY-MM-DD (e.g., '2024-01-15') or ISO 8601 (e.g., '2024-01-15T00:00:00.000Z')", e2);
+        }
+        catch (DateTimeParseException e2) {
+          throw new IllegalArgumentException("Invalid date format: " + dateValue + ". Expected format: YYYY-MM-DD (e.g., '2024-01-15') or ISO 8601 (e.g., '2024-01-15T00:00:00.000Z')", e2);
         }
       }
     }
-    
-    throw new IllegalArgumentException("Invalid date type: " + dateValue.getClass().getSimpleName() + 
-        ". Expected String or null");
+
+    throw new IllegalArgumentException("Invalid date type: " + dateValue.getClass().getSimpleName() + ". Expected String or null");
   }
 
 }

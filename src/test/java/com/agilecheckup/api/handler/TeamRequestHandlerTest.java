@@ -1,5 +1,28 @@
 package com.agilecheckup.api.handler;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.contains;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.Department;
 import com.agilecheckup.persistency.entity.Team;
@@ -10,28 +33,6 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.contains;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.isNull;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class TeamRequestHandlerTest {
@@ -69,10 +70,7 @@ class TeamRequestHandlerTest {
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("tenantId", tenantId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     Department department = createDepartment("dept-1", "Engineering");
     Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
@@ -102,10 +100,7 @@ class TeamRequestHandlerTest {
     queryParams.put("tenantId", tenantId);
     queryParams.put("departmentId", departmentId);
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(queryParams);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("GET").withQueryStringParameters(queryParams);
 
     Department department = createDepartment(departmentId, "Engineering");
     Team team1 = createTeam("team-1", "Team Alpha", department, tenantId);
@@ -129,9 +124,7 @@ class TeamRequestHandlerTest {
   @Test
   void handleGetAll_whenNoTenantIdProvided_shouldReturnBadRequest() {
     // Given
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("GET");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("GET");
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -148,9 +141,7 @@ class TeamRequestHandlerTest {
   void handleGetById_whenTeamExists_shouldReturnTeam() {
     // Given
     String teamId = "team-123";
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("GET");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("GET");
 
     Department department = createDepartment("dept-1", "Engineering");
     Team team = createTeam(teamId, "Team Alpha", department, "tenant-123");
@@ -172,9 +163,7 @@ class TeamRequestHandlerTest {
   void handleGetById_whenTeamNotFound_shouldReturn404() {
     // Given
     String teamId = "non-existent";
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("GET");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("GET");
 
     doReturn(Optional.empty()).when(teamService).findById(teamId);
 
@@ -190,28 +179,14 @@ class TeamRequestHandlerTest {
   // @Test - DISABLED: Temporary serialization issue with Department in TeamResponse
   void handleCreate_withValidData_shouldCreateTeam() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"New Team\",\n" +
-        "  \"description\": \"A new development team\",\n" +
-        "  \"tenantId\": \"tenant-123\",\n" +
-        "  \"departmentId\": \"dept-1\"\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"New Team\",\n" + "  \"description\": \"A new development team\",\n" + "  \"tenantId\": \"tenant-123\",\n" + "  \"departmentId\": \"dept-1\"\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("POST").withBody(requestBody);
 
     Department department = createDepartment("dept-1", "Engineering");
     Team createdTeam = createTeam("new-team-id", "New Team", department, "tenant-123");
     // Note: Team is immutable with SuperBuilder, so we need to create a new instance
-    createdTeam = Team.builder()
-        .id(createdTeam.getId())
-        .name(createdTeam.getName())
-        .description("A new development team")
-        .tenantId(createdTeam.getTenantId())
-        .departmentId(createdTeam.getDepartmentId())
-        .build();
+    createdTeam = Team.builder().id(createdTeam.getId()).name(createdTeam.getName()).description("A new development team").tenantId(createdTeam.getTenantId()).departmentId(createdTeam.getDepartmentId()).build();
 
     doReturn(Optional.of(createdTeam)).when(teamService).create("tenant-123", "New Team", "A new development team", "dept-1");
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -229,17 +204,9 @@ class TeamRequestHandlerTest {
   @Test
   void handleCreate_whenCreationFails_shouldReturn400() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"New Team\",\n" +
-        "  \"description\": \"A new development team\",\n" +
-        "  \"tenantId\": \"tenant-123\",\n" +
-        "  \"departmentId\": \"dept-1\"\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"New Team\",\n" + "  \"description\": \"A new development team\",\n" + "  \"tenantId\": \"tenant-123\",\n" + "  \"departmentId\": \"dept-1\"\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("POST").withBody(requestBody);
 
     doReturn(Optional.empty()).when(teamService).create(anyString(), anyString(), anyString(), anyString());
 
@@ -255,28 +222,14 @@ class TeamRequestHandlerTest {
   void handleUpdate_whenTeamExists_shouldUpdateTeam() {
     // Given
     String teamId = "team-123";
-    String requestBody = "{\n" +
-        "  \"name\": \"Updated Team\",\n" +
-        "  \"description\": \"Updated description\",\n" +
-        "  \"tenantId\": \"tenant-123\",\n" +
-        "  \"departmentId\": \"dept-2\"\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Updated Team\",\n" + "  \"description\": \"Updated description\",\n" + "  \"tenantId\": \"tenant-123\",\n" + "  \"departmentId\": \"dept-2\"\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("PUT")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("PUT").withBody(requestBody);
 
     Department department = createDepartment("dept-2", "Operations");
     Team updatedTeam = createTeam(teamId, "Updated Team", department, "tenant-123");
     // Note: Team is immutable with SuperBuilder, so we need to create a new instance
-    updatedTeam = Team.builder()
-        .id(updatedTeam.getId())
-        .name(updatedTeam.getName())
-        .description("Updated description")
-        .tenantId(updatedTeam.getTenantId())
-        .departmentId(updatedTeam.getDepartmentId())
-        .build();
+    updatedTeam = Team.builder().id(updatedTeam.getId()).name(updatedTeam.getName()).description("Updated description").tenantId(updatedTeam.getTenantId()).departmentId(updatedTeam.getDepartmentId()).build();
 
     doReturn(Optional.of(updatedTeam)).when(teamService).update(teamId, "tenant-123", "Updated Team", "Updated description", "dept-2");
     doReturn(Optional.of(department)).when(departmentService).findById(department.getId());
@@ -295,17 +248,9 @@ class TeamRequestHandlerTest {
   void handleUpdate_whenTeamNotFound_shouldReturn404() {
     // Given
     String teamId = "non-existent";
-    String requestBody = "{\n" +
-        "  \"name\": \"Updated Team\",\n" +
-        "  \"description\": \"Updated description\",\n" +
-        "  \"tenantId\": \"tenant-123\",\n" +
-        "  \"departmentId\": \"dept-2\"\n" +
-        "}";
+    String requestBody = "{\n" + "  \"name\": \"Updated Team\",\n" + "  \"description\": \"Updated description\",\n" + "  \"tenantId\": \"tenant-123\",\n" + "  \"departmentId\": \"dept-2\"\n" + "}";
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("PUT")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("PUT").withBody(requestBody);
 
     doReturn(Optional.empty()).when(teamService).update(anyString(), anyString(), anyString(), anyString(), anyString());
 
@@ -321,9 +266,7 @@ class TeamRequestHandlerTest {
   void handleDelete_whenTeamExists_shouldDeleteTeam() {
     // Given
     String teamId = "team-123";
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("DELETE");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("DELETE");
 
     Department department = createDepartment("dept-1", "Engineering");
     Team team = createTeam(teamId, "Team to Delete", department, "tenant-123");
@@ -344,9 +287,7 @@ class TeamRequestHandlerTest {
   void handleDelete_whenTeamNotFound_shouldReturn404() {
     // Given
     String teamId = "non-existent";
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams/" + teamId)
-        .withHttpMethod("DELETE");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams/" + teamId).withHttpMethod("DELETE");
 
     doReturn(Optional.empty()).when(teamService).findById(teamId);
 
@@ -363,9 +304,7 @@ class TeamRequestHandlerTest {
   @Test
   void handleRequest_withInvalidMethod_shouldReturn405() {
     // Given
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("PATCH");
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("PATCH");
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -378,10 +317,7 @@ class TeamRequestHandlerTest {
   @Test
   void handleRequest_whenExceptionOccurs_shouldReturn500() {
     // Given
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(Collections.singletonMap("tenantId", "tenant-123"));
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("GET").withQueryStringParameters(Collections.singletonMap("tenantId", "tenant-123"));
 
     doThrow(new RuntimeException("Database connection failed")).when(teamService).findAllByTenantId(anyString());
 
@@ -397,14 +333,9 @@ class TeamRequestHandlerTest {
   @Test
   void handleCreate_withMissingFields_shouldReturn400() {
     // Given
-    String requestBody = "{\n" +
-        "  \"name\": \"Incomplete Team\"\n" +
-        "}"; // Missing required fields: description, tenantId, departmentId
+    String requestBody = "{\n" + "  \"name\": \"Incomplete Team\"\n" + "}"; // Missing required fields: description, tenantId, departmentId
 
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("POST")
-        .withBody(requestBody);
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("POST").withBody(requestBody);
 
     // Mock service to return empty when called with null values ( API signature: tenantId, name, description, departmentId)
     doReturn(Optional.empty()).when(teamService).create(isNull(), anyString(), isNull(), isNull());
@@ -421,10 +352,7 @@ class TeamRequestHandlerTest {
   @Test
   void handleGetAll_withEmptyQueryParams_shouldRequireTenantId() {
     // Given
-    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
-        .withPath("/teams")
-        .withHttpMethod("GET")
-        .withQueryStringParameters(new HashMap<>());
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/teams").withHttpMethod("GET").withQueryStringParameters(new HashMap<>());
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
@@ -444,12 +372,6 @@ class TeamRequestHandlerTest {
   }
 
   private Team createTeam(String id, String name, Department department, String tenantId) {
-    return Team.builder()
-        .id(id)
-        .name(name)
-        .description(name + " Description")
-        .tenantId(tenantId)
-        .departmentId(department.getId())
-        .build();
+    return Team.builder().id(id).name(name).description(name + " Description").tenantId(tenantId).departmentId(department.getId()).build();
   }
 }

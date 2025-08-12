@@ -19,22 +19,70 @@ public class LocalRunner {
 
     // Create a basic mock context
     Context context = new Context() {
-      @Override public String getAwsRequestId() { return "testId"; }
-      @Override public String getLogGroupName() { return "testGroup"; }
-      @Override public String getLogStreamName() { return "testStream"; }
-      @Override public String getFunctionName() { return "testFunction"; }
-      @Override public String getFunctionVersion() { return "testVersion"; }
-      @Override public String getInvokedFunctionArn() { return "testArn"; }
-      @Override public LambdaLogger getLogger() {
+      @Override
+      public String getAwsRequestId() {
+        return "testId";
+      }
+
+      @Override
+      public String getLogGroupName() {
+        return "testGroup";
+      }
+
+      @Override
+      public String getLogStreamName() {
+        return "testStream";
+      }
+
+      @Override
+      public String getFunctionName() {
+        return "testFunction";
+      }
+
+      @Override
+      public String getFunctionVersion() {
+        return "testVersion";
+      }
+
+      @Override
+      public String getInvokedFunctionArn() {
+        return "testArn";
+      }
+
+      @Override
+      public LambdaLogger getLogger() {
         return new LambdaLogger() {
-          @Override public void log(String message) { System.out.println(message); }
-          @Override public void log(byte[] message) { System.out.println(new String(message)); }
+          @Override
+          public void log(String message) {
+            System.out.println(message);
+          }
+
+          @Override
+          public void log(byte[] message) {
+            System.out.println(new String(message));
+          }
         };
       }
-      @Override public int getRemainingTimeInMillis() { return 30000; }
-      @Override public int getMemoryLimitInMB() { return 128; }
-      @Override public ClientContext getClientContext() { return null; }
-      @Override public CognitoIdentity getIdentity() { return null; }
+
+      @Override
+      public int getRemainingTimeInMillis() {
+        return 30000;
+      }
+
+      @Override
+      public int getMemoryLimitInMB() {
+        return 128;
+      }
+
+      @Override
+      public ClientContext getClientContext() {
+        return null;
+      }
+
+      @Override
+      public CognitoIdentity getIdentity() {
+        return null;
+      }
     };
 
     // Call the handler

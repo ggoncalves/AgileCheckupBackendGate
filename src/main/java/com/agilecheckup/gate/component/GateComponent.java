@@ -1,10 +1,11 @@
 package com.agilecheckup.gate.component;
 
+import javax.inject.Singleton;
+
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
-import dagger.Component;
 
-import javax.inject.Singleton;
+import dagger.Component;
 
 /**
  * Dagger component for API Gateway that extends ServiceComponent
@@ -13,14 +14,13 @@ import javax.inject.Singleton;
  * @author Claude (claude-opus-4-20250514)
  */
 @Singleton
-@Component(modules = {GateCacheModule.class}, 
-          dependencies = {ServiceComponent.class})
+@Component(modules = {GateCacheModule.class}, dependencies = {ServiceComponent.class})
 public interface GateComponent extends ServiceComponent {
-    
-    /**
-     * Provides access to the cache manager.
-     * 
-     * @return The CacheManager instance
-     */
-    CacheManager cacheManager();
+
+  /**
+   * Provides access to the cache manager.
+   * 
+   * @return The CacheManager instance
+   */
+  CacheManager cacheManager();
 }

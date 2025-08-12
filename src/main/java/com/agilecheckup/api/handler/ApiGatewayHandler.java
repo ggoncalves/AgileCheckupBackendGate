@@ -1,5 +1,8 @@
 package com.agilecheckup.api.handler;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.agilecheckup.dagger.component.DaggerServiceComponent;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.amazonaws.services.lambda.runtime.Context;
@@ -9,9 +12,6 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
@@ -34,7 +34,7 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
     // Register JavaTimeModule to handle LocalDateTime serialization/deserialization
     objectMapper.registerModule(new JavaTimeModule());
     objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    
+
     // Configure Jackson to handle empty strings as null for enums (to support optional Gender/GenderPronoun)
     objectMapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
 
@@ -48,7 +48,7 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
     this.routeHandlers.put("answers", new AnswerRequestHandler(serviceComponent, objectMapper));
     this.routeHandlers.put("employeeassessments", new EmployeeAssessmentRequestHandler(serviceComponent, objectMapper));
     this.routeHandlers.put("dashboard-analytics", new DashboardAnalyticsRequestHandler(serviceComponent, objectMapper));
-    
+
     // Initialize special handlers
     this.invitationHandler = new InvitationRequestHandler(serviceComponent, objectMapper);
     this.dashboardAnalyticsHandler = new DashboardAnalyticsRequestHandler(serviceComponent, objectMapper);
@@ -93,7 +93,8 @@ public class ApiGatewayHandler implements RequestHandler<APIGatewayProxyRequestE
       // No handler found for this path
       return ResponseBuilder.buildResponse(404, "Resource Not Found");
 
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       context.getLogger().log("Error processing request: " + e.getMessage());
       return ResponseBuilder.buildResponse(500, "Internal Server Error: " + e.getMessage());
     }

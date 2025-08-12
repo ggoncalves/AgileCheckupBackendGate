@@ -2,15 +2,14 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
-import com.agilecheckup.persistency.entity.question.Question;
 import com.agilecheckup.persistency.entity.question.QuestionOption;
+import com.agilecheckup.persistency.entity.question.Question;
 import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.service.QuestionService;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -103,7 +102,7 @@ public class QuestionRequestHandler implements RequestHandlerStrategy {
       return ResponseBuilder.buildResponse(400, "Missing required query parameter: tenantId");
     }
 
-    PaginatedQueryList<Question> questions = questionService.findAllByTenantId(tenantId);
+    List<Question> questions = questionService.findAllByTenantId(tenantId);
     return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(questions));
   }
 

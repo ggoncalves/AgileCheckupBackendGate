@@ -3,13 +3,14 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.PerformanceCycle;
 import com.agilecheckup.service.PerformanceCycleService;
-import com.agilecheckup.util.DateTimeUtil;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -92,13 +93,13 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleCreate(String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Date startDate = DateTimeUtil.parseDate(requestMap.get("startDate"));
-    Date endDate = DateTimeUtil.parseDate(requestMap.get("endDate"));
+    LocalDate startDate = parseLocalDate(requestMap.get("startDate"));
+    LocalDate endDate = parseLocalDate(requestMap.get("endDate"));
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.create(
+        (String) requestMap.get("tenantId"),  //  signature: tenantId first
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
         (String) requestMap.get("companyId"),
         (Boolean) requestMap.get("isActive"),
         (Boolean) requestMap.get("isTimeSensitive"),
@@ -116,14 +117,14 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   private APIGatewayProxyResponseEvent handleUpdate(String id, String requestBody) throws Exception {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
-    Date startDate = DateTimeUtil.parseDate(requestMap.get("startDate"));
-    Date endDate = DateTimeUtil.parseDate(requestMap.get("endDate"));
+    LocalDate startDate = parseLocalDate(requestMap.get("startDate"));
+    LocalDate endDate = parseLocalDate(requestMap.get("endDate"));
 
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.update(
         id,
+        (String) requestMap.get("tenantId"),  //  signature: tenantId second
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
         (String) requestMap.get("companyId"),
         (Boolean) requestMap.get("isActive"),
         (Boolean) requestMap.get("isTimeSensitive"),
@@ -142,7 +143,7 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
     Optional<PerformanceCycle> performanceCycle = performanceCycleService.findById(id);
 
     if (performanceCycle.isPresent()) {
-      performanceCycleService.delete(performanceCycle.get());
+      performanceCycleService.deleteById(id);  //  uses deleteById(id) instead of delete(entity)
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Performance cycle not found");
@@ -152,6 +153,45 @@ public class PerformanceCycleRequestHandler implements RequestHandlerStrategy {
   private String extractIdFromPath(String path) {
     // Extract ID from path like /performancecycles/{id}
     return path.substring(path.lastIndexOf("/") + 1);
+  }
+
+  /**
+   * Parses a date value into a LocalDate object.
+   * Supports both ISO 8601 format (with time and timezone) and simple date format.
+   * 
+   * @param dateValue the date value to parse (String or null)
+   * @return LocalDate object or null if input is null
+   * @throws IllegalArgumentException if the value cannot be parsed
+   */
+  private LocalDate parseLocalDate(Object dateValue) {
+    if (dateValue == null) {
+      return null;
+    }
+    
+    if (dateValue instanceof String) {
+      String dateString = (String) dateValue;
+      if (dateString.trim().isEmpty()) {
+        return null;
+      }
+      
+      try {
+        // First try simple YYYY-MM-DD format
+        return LocalDate.parse(dateString, DateTimeFormatter.ISO_LOCAL_DATE);
+      } catch (DateTimeParseException e1) {
+        try {
+          // If that fails, try ISO 8601 format with time and timezone
+          // Parse as Instant and convert to LocalDate
+          java.time.Instant instant = java.time.Instant.parse(dateString);
+          return instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        } catch (DateTimeParseException e2) {
+          throw new IllegalArgumentException("Invalid date format: " + dateValue + 
+              ". Expected format: YYYY-MM-DD (e.g., '2024-01-15') or ISO 8601 (e.g., '2024-01-15T00:00:00.000Z')", e2);
+        }
+      }
+    }
+    
+    throw new IllegalArgumentException("Invalid date type: " + dateValue.getClass().getSimpleName() + 
+        ". Expected String or null");
   }
 
 }

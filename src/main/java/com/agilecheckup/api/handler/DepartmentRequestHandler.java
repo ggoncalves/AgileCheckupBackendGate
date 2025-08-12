@@ -1,11 +1,11 @@
 package com.agilecheckup.api.handler;
 
+import com.agilecheckup.service.DepartmentService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.Department;
-import com.agilecheckup.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
@@ -126,7 +126,7 @@ public class DepartmentRequestHandler implements RequestHandlerStrategy {
     Optional<Department> department = departmentService.findById(id);
 
     if (department.isPresent()) {
-      departmentService.delete(department.get());
+      departmentService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Department not found");

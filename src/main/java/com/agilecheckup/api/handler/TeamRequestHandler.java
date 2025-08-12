@@ -79,9 +79,9 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
       String tenantId = queryParams.get("tenantId");
       String departmentId = queryParams.get("departmentId");
       
-      // If departmentId is provided, filter by both tenant and department
+      // If departmentId is provided, filter by department
       if (departmentId != null) {
-        List<Team> teams = teamService.findByDepartmentId(departmentId, tenantId);
+        List<Team> teams = teamService.findByDepartmentId(departmentId);
         List<TeamResponse> responses = enrichTeamsWithDepartments(teams);
         return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(responses));
       }
@@ -112,9 +112,9 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
     Optional<Team> team = teamService.create(
+        (String) requestMap.get("tenantId"),
         (String) requestMap.get("name"),
         (String) requestMap.get("description"),
-        (String) requestMap.get("tenantId"),
         (String) requestMap.get("departmentId")
     );
 
@@ -131,9 +131,9 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
 
     Optional<Team> team = teamService.update(
         id,
-        (String) requestMap.get("name"),
-        (String) requestMap.get("description"),
         (String) requestMap.get("tenantId"),
+        (String) requestMap.get("name"), 
+        (String) requestMap.get("description"),
         (String) requestMap.get("departmentId")
     );
 
@@ -149,7 +149,7 @@ public class TeamRequestHandler implements RequestHandlerStrategy {
     Optional<Team> team = teamService.findById(id);
 
     if (team.isPresent()) {
-      teamService.delete(team.get());
+      teamService.deleteById(id);
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Team not found");

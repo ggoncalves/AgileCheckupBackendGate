@@ -115,7 +115,13 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
 
     // Parse the LocalDateTime using utility class
-    LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
+    String answeredAtStr = (String) requestMap.get("answeredAt");
+    LocalDateTime answeredAt = null;
+    if (answeredAtStr != null && !answeredAtStr.trim().isEmpty()) {
+      answeredAt = DateTimeUtil.parseDateTime(answeredAtStr);
+    } else {
+      answeredAt = LocalDateTime.now();
+    }
 
     Optional<Answer> answer = answerService.create(
         (String) requestMap.get("employeeAssessmentId"),
@@ -154,10 +160,9 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
   }
 
   private APIGatewayProxyResponseEvent handleDelete(String id) {
-    Optional<Answer> answer = answerService.findById(id);
+    boolean deleted = answerService.deleteById(id);
 
-    if (answer.isPresent()) {
-      answerService.delete(answer.get());
+    if (deleted) {
       return ResponseBuilder.buildResponse(204, "");
     } else {
       return ResponseBuilder.buildResponse(404, "Answer not found");
@@ -171,24 +176,51 @@ public class AnswerRequestHandler implements RequestHandlerStrategy {
 
 
   private APIGatewayProxyResponseEvent handleSaveAndGetNext(String requestBody) throws Exception {
-    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
-
-    // Parse the LocalDateTime using utility class
-    LocalDateTime answeredAt = DateTimeUtil.parseDateTime((String) requestMap.get("answeredAt"));
-
     try {
+      Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
+      
+      String employeeAssessmentId = (String) requestMap.get("employeeAssessmentId");
+      String questionId = (String) requestMap.get("questionId");
+      String answeredAtStr = (String) requestMap.get("answeredAt");
+      String value = (String) requestMap.get("value");
+      String tenantId = (String) requestMap.get("tenantId");
+      String notes = (String) requestMap.get("notes");
+      
+      // Validate required parameters
+      if (employeeAssessmentId == null || questionId == null || tenantId == null) {
+        String error = "Missing required parameters: employeeAssessmentId=" + employeeAssessmentId + 
+                      ", questionId=" + questionId + ", tenantId=" + tenantId;
+        return ResponseBuilder.buildResponse(400, error);
+      }
+
+      // Parse the LocalDateTime using utility class
+      LocalDateTime answeredAt = null;
+      if (answeredAtStr != null && !answeredAtStr.trim().isEmpty()) {
+        try {
+          answeredAt = DateTimeUtil.parseDateTime(answeredAtStr);
+        } catch (Exception e) {
+          String error = "Failed to parse answeredAt: " + answeredAtStr + " - " + e.getMessage();
+          return ResponseBuilder.buildResponse(400, error);
+        }
+      } else {
+        // Use current time if answeredAt is not provided
+        answeredAt = LocalDateTime.now();
+      }
+
       com.agilecheckup.service.dto.AnswerWithProgressResponse response = assessmentNavigationService.saveAnswerAndGetNext(
-          (String) requestMap.get("employeeAssessmentId"),
-          (String) requestMap.get("questionId"),
+          employeeAssessmentId,
+          questionId,
           answeredAt,
-          (String) requestMap.get("value"),
-          (String) requestMap.get("tenantId"),
-          (String) requestMap.get("notes")
+          value,
+          tenantId,
+          notes
       );
 
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(response));
     } catch (RuntimeException e) {
-      return ResponseBuilder.buildResponse(400, "Failed to save answer: " + e.getMessage());
+      return ResponseBuilder.buildResponse(400, "Failed to save answer and get next: " + e.getMessage());
+    } catch (Exception e) {
+      return ResponseBuilder.buildResponse(500, "Failed to save answer and get next: " + e.getMessage());
     }
   }
 

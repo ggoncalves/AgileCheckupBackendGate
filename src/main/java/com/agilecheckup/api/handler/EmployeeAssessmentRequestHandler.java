@@ -3,12 +3,12 @@ package com.agilecheckup.api.handler;
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.EmployeeAssessment;
 import com.agilecheckup.service.EmployeeAssessmentService;
+import com.agilecheckup.service.dto.EmployeeValidationRequest;
+import com.agilecheckup.service.dto.EmployeeValidationResponse;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.agilecheckup.service.dto.EmployeeValidationRequest;
-import com.agilecheckup.service.dto.EmployeeValidationResponse;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Map;
@@ -92,12 +92,12 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     
     if (assessmentMatrixId != null && !assessmentMatrixId.isEmpty()) {
       // Filter by assessment matrix
-      return ResponseBuilder.buildResponse(200, 
-          objectMapper.writeValueAsString(employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId)));
+      var resultsList = employeeAssessmentService.findByAssessmentMatrix(assessmentMatrixId, tenantId);
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(resultsList));
     } else {
       // Return all for tenant
-      return ResponseBuilder.buildResponse(200, 
-          objectMapper.writeValueAsString(employeeAssessmentService.findAllByTenantId(tenantId)));
+      var resultsList = employeeAssessmentService.findAllByTenantId(tenantId);
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(resultsList));
     }
   }
 
@@ -109,10 +109,10 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     }
     
     String tenantId = queryParams.get("tenantId");
-    Optional<EmployeeAssessment> employeeAssessment = employeeAssessmentService.findById(id, tenantId);
+    Optional<EmployeeAssessment> assessment = employeeAssessmentService.findById(id, tenantId);
 
-    if (employeeAssessment.isPresent()) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment.get()));
+    if (assessment.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessment.get()));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found");
     }
@@ -143,14 +143,20 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
         employeeAssessment.setAnsweredQuestionCount(0);
       }
       
-      // Force validation for new entities by clearing the auto-generated ID
-      employeeAssessment.setId(null);
+      // Use  service create method with individual parameters
+      Optional<EmployeeAssessment> created = employeeAssessmentService.create(
+          employeeAssessment.getAssessmentMatrixId(),
+          employeeAssessment.getTeamId(),
+          employeeAssessment.getEmployee().getName(),
+          employeeAssessment.getEmployee().getEmail(),
+          employeeAssessment.getEmployee().getDocumentNumber(),
+          employeeAssessment.getEmployee().getPersonDocumentType(),
+          employeeAssessment.getEmployee().getGender(),
+          employeeAssessment.getEmployee().getGenderPronoun()
+      );
       
-      // Create through service
-      EmployeeAssessment created = employeeAssessmentService.save(employeeAssessment);
-      
-      if (created != null) {
-        return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created));
+      if (created.isPresent()) {
+        return ResponseBuilder.buildResponse(201, objectMapper.writeValueAsString(created.get()));
       } else {
         return ResponseBuilder.buildResponse(400, "Failed to create employee assessment");
       }
@@ -170,14 +176,21 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
       return ResponseBuilder.buildResponse(400, "tenantId is required");
     }
     
-    // Set the ID from path
-    employeeAssessment.setId(id);
+    // Use  service update method with individual parameters
+    Optional<EmployeeAssessment> updated = employeeAssessmentService.update(
+        id,
+        employeeAssessment.getAssessmentMatrixId(),
+        employeeAssessment.getTeamId(),
+        employeeAssessment.getEmployee().getName(),
+        employeeAssessment.getEmployee().getEmail(),
+        employeeAssessment.getEmployee().getDocumentNumber(),
+        employeeAssessment.getEmployee().getPersonDocumentType(),
+        employeeAssessment.getEmployee().getGender(),
+        employeeAssessment.getEmployee().getGenderPronoun()
+    );
     
-    // Update through service
-    EmployeeAssessment updated = employeeAssessmentService.save(employeeAssessment);
-    
-    if (updated != null) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(updated));
+    if (updated.isPresent()) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(updated.get()));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
     }
@@ -187,10 +200,10 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
     String tenantId = (String) requestMap.get("tenantId");
 
-    EmployeeAssessment employeeAssessment = employeeAssessmentService.updateEmployeeAssessmentScore(id, tenantId);
+    EmployeeAssessment assessment = employeeAssessmentService.updateEmployeeAssessmentScore(id, tenantId);
 
-    if (employeeAssessment != null) {
-      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(employeeAssessment));
+    if (assessment != null) {
+      return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessment));
     } else {
       return ResponseBuilder.buildResponse(404, "Employee assessment not found or update failed");
     }

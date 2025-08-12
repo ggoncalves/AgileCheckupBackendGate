@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Data
@@ -15,11 +16,12 @@ import java.util.Date;
 @AllArgsConstructor
 public class TeamResponse {
     private String id;
-    private Date createdDate;
-    private Date lastUpdatedDate;
+    private Instant createdDate;
+    private Instant lastUpdatedDate;
     private String tenantId;
     private String name;
     private String description;
+    private String departmentId;
     private Department department;
     
     public static TeamResponse fromTeam(Team team, Department department) {
@@ -30,7 +32,9 @@ public class TeamResponse {
                 .tenantId(team.getTenantId())
                 .name(team.getName())
                 .description(team.getDescription())
+                .departmentId(team.getDepartmentId())
                 .department(department)
                 .build();
     }
+    
 }

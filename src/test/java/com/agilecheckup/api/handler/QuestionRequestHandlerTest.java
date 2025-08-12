@@ -4,7 +4,6 @@ import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.persistency.entity.QuestionType;
 import com.agilecheckup.persistency.entity.question.Answer;
 import com.agilecheckup.persistency.entity.question.Question;
-import com.agilecheckup.persistency.entity.question.QuestionOption;
 import com.agilecheckup.service.AssessmentNavigationService;
 import com.agilecheckup.service.QuestionService;
 import com.agilecheckup.service.dto.AnswerWithProgressResponse;
@@ -21,8 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedQueryList;
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,13 +28,11 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -107,8 +102,7 @@ class QuestionRequestHandlerTest {
                 .categoryName("Category Name")
                 .build();
 
-        PaginatedQueryList<Question> questions = mock(PaginatedQueryList.class);
-        doReturn(Arrays.asList(question1, question2).iterator()).when(questions).iterator();
+        List<Question> questions = Arrays.asList(question1, question2);
         doReturn(questions).when(questionService).findAllByTenantId("tenant-123");
 
         // When

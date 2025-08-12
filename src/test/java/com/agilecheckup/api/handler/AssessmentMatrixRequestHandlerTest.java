@@ -2,8 +2,14 @@ package com.agilecheckup.api.handler;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.gate.cache.CacheManager;
-import com.agilecheckup.persistency.entity.*;
+import com.agilecheckup.persistency.entity.AssessmentConfiguration;
+import com.agilecheckup.persistency.entity.AssessmentMatrix;
+import com.agilecheckup.persistency.entity.Category;
+import com.agilecheckup.persistency.entity.Pillar;
+import com.agilecheckup.persistency.entity.QuestionNavigationType;
+import com.agilecheckup.persistency.entity.score.PotentialScore;
 import com.agilecheckup.service.AssessmentMatrixService;
+import com.agilecheckup.service.dto.EmployeeAssessmentSummary;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
@@ -17,12 +23,24 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.anyMap;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AssessmentMatrixRequestHandlerTest {
@@ -54,7 +72,7 @@ class AssessmentMatrixRequestHandlerTest {
   void setUp() {
     ObjectMapper objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
-    doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
+    lenient().doReturn(assessmentMatrixService).when(serviceComponent).buildAssessmentMatrixService();
     lenient().doReturn(lambdaLogger).when(context).getLogger();
 
     // Mock cache manager to always return empty (no cache hits)
@@ -777,6 +795,7 @@ class AssessmentMatrixRequestHandlerTest {
 
   // ========== Helper Methods for Dashboard Tests ==========
 
+  // Team summaries created for
   private List<com.agilecheckup.service.dto.TeamAssessmentSummary> createTestTeamSummaries() {
     List<com.agilecheckup.service.dto.TeamAssessmentSummary> summaries = new ArrayList<>();
 
@@ -801,48 +820,56 @@ class AssessmentMatrixRequestHandlerTest {
     return summaries;
   }
 
+  // Employee summaries created for
   private List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> createTestEmployeeSummaries() {
     List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> summaries = new ArrayList<>();
 
     summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
         .employeeAssessmentId("assessment-1")
+        .employeeId("emp1")
         .employeeName("John Doe")
         .employeeEmail("john@example.com")
         .teamId("team-1")
+        .teamName("Engineering Team")
         .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED)
         .currentScore(85.0)
-        .answeredQuestions(15)
+        .answeredQuestionCount(15)
         .lastActivityDate(java.time.LocalDateTime.now())
         .build());
 
     summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
         .employeeAssessmentId("assessment-2")
+        .employeeId("emp2")
         .employeeName("Jane Smith")
         .employeeEmail("jane@example.com")
         .teamId("team-1")
+        .teamName("Engineering Team")
         .assessmentStatus(com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
         .currentScore(null)
-        .answeredQuestions(8)
+        .answeredQuestionCount(8)
         .lastActivityDate(java.time.LocalDateTime.now().minusHours(2))
         .build());
 
     return summaries;
   }
 
-  private List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> createLargeEmployeeSummaryList(int count) {
-    List<com.agilecheckup.service.dto.EmployeeAssessmentSummary> summaries = new ArrayList<>();
+  // Employee summaries created for
+  private List<EmployeeAssessmentSummary> createLargeEmployeeSummaryList(int count) {
+    List<EmployeeAssessmentSummary> summaries = new ArrayList<>();
 
     for (int i = 1; i <= count; i++) {
       summaries.add(com.agilecheckup.service.dto.EmployeeAssessmentSummary.builder()
           .employeeAssessmentId("assessment-" + i)
+          .employeeId("emp" + i)
           .employeeName("Employee " + i)
           .employeeEmail("employee" + i + "@example.com")
           .teamId("team-" + ((i % 5) + 1))
+          .teamName("Team " + ((i % 5) + 1))
           .assessmentStatus(i % 3 == 0 ?
               com.agilecheckup.persistency.entity.AssessmentStatus.COMPLETED :
               com.agilecheckup.persistency.entity.AssessmentStatus.IN_PROGRESS)
           .currentScore(i % 3 == 0 ? Double.valueOf(70 + (i % 30)) : null)
-          .answeredQuestions(i % 20)
+          .answeredQuestionCount(i % 20)
           .lastActivityDate(java.time.LocalDateTime.now().minusHours(i % 24))
           .build());
     }
@@ -850,10 +877,124 @@ class AssessmentMatrixRequestHandlerTest {
     return summaries;
   }
 
-  private com.agilecheckup.persistency.entity.score.PotentialScore createTestPotentialScore() {
-    return com.agilecheckup.persistency.entity.score.PotentialScore.builder()
+  private PotentialScore createTestPotentialScore() {
+    return PotentialScore.builder()
         .score(100.0)
         .pillarIdToPillarScoreMap(new HashMap<>())
         .build();
+  }
+
+  @Test
+  void shouldSuccessfullyCreateAssessmentMatrixWithPillarAndCategory() {
+    // Given
+    String requestBody = "{\n" +
+        "  \"name\": \" Engineering Matrix\",\n" +
+        "  \"description\": \" Competency assessment for engineering roles\",\n" +
+        "  \"tenantId\": \"tenant-v2-test-id-123\",\n" +
+        "  \"performanceCycleId\": \"v2-3837551b-20f2-41eb-9779-8203a5209c45\",\n" +
+        "  \"pillarMap\": {\n" +
+        "    \"p1-v2\": {\n" +
+        "      \"name\": \"Technical Skills \",\n" +
+        "      \"description\": \" Technical knowledge and abilities\",\n" +
+        "      \"categoryMap\": {\n" +
+        "        \"c1-v2\": {\n" +
+        "          \"name\": \"Programming \",\n" +
+        "          \"description\": \" Programming skills and knowledge\"\n" +
+        "        },\n" +
+        "        \"c2-v2\": {\n" +
+        "          \"name\": \"Architecture \",\n" +
+        "          \"description\": \" System design and architecture\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    },\n" +
+        "    \"p2-v2\": {\n" +
+        "      \"name\": \"Soft Skills \",\n" +
+        "      \"description\": \" Communication and teamwork\",\n" +
+        "      \"categoryMap\": {\n" +
+        "        \"c3-v2\": {\n" +
+        "          \"name\": \"Leadership \",\n" +
+        "          \"description\": \" Leadership abilities\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  },\n" +
+        "  \"configuration\": {\n" +
+        "    \"allowQuestionReview\": false,\n" +
+        "    \"requireAllQuestions\": true,\n" +
+        "    \"autoSave\": false,\n" +
+        "    \"navigationMode\": \"SEQUENTIAL\"\n" +
+        "  }\n" +
+        "}";
+
+    APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent()
+        .withPath("/assessmentmatrices")
+        .withHttpMethod("POST")
+        .withBody(requestBody);
+
+    // Create a sample assessment matrix to return
+    AssessmentMatrix createdMatrix = AssessmentMatrix.builder()
+        .id("new-v2-matrix-id")
+        .name(" Engineering Matrix")
+        .description(" Competency assessment for engineering roles")
+        .tenantId("tenant-v2-test-id-123")
+        .performanceCycleId("v2-3837551b-20f2-41eb-9779-8203a5209c45")
+        .build();
+
+    doReturn(Optional.of(createdMatrix)).when(assessmentMatrixService)
+        .create(anyString(), anyString(), anyString(), anyString(), any(), any());
+
+    // When
+    APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
+
+    // Then
+    // Verify the service was called with correct parameters
+    verify(assessmentMatrixService).create(
+        eq(" Engineering Matrix"),
+        eq(" Competency assessment for engineering roles"),
+        eq("tenant-v2-test-id-123"),
+        eq("v2-3837551b-20f2-41eb-9779-8203a5209c45"),
+        pillarMapCaptor.capture(),
+        configurationCaptor.capture());
+
+    // Verify the  pillar map was built correctly
+    Map<String, Pillar> capturedPillarMap = pillarMapCaptor.getValue();
+    assertThat(capturedPillarMap).hasSize(2);
+    assertThat(capturedPillarMap).containsKeys("p1-v2", "p2-v2");
+
+    // Verify first  pillar
+    Pillar pillar1 = capturedPillarMap.get("p1-v2");
+    assertThat(pillar1.getId()).isEqualTo("p1-v2");
+    assertThat(pillar1.getName()).isEqualTo("Technical Skills ");
+    assertThat(pillar1.getDescription()).isEqualTo(" Technical knowledge and abilities");
+    assertThat(pillar1.getCategoryMap()).hasSize(2);
+
+    // Verify  categories in first pillar
+    Category category1 = pillar1.getCategoryMap().get("c1-v2");
+    assertThat(category1.getId()).isEqualTo("c1-v2");
+    assertThat(category1.getName()).isEqualTo("Programming ");
+    assertThat(category1.getDescription()).isEqualTo(" Programming skills and knowledge");
+
+    Category category2 = pillar1.getCategoryMap().get("c2-v2");
+    assertThat(category2.getId()).isEqualTo("c2-v2");
+    assertThat(category2.getName()).isEqualTo("Architecture ");
+    assertThat(category2.getDescription()).isEqualTo(" System design and architecture");
+
+    // Verify second  pillar
+    Pillar pillar2 = capturedPillarMap.get("p2-v2");
+    assertThat(pillar2.getId()).isEqualTo("p2-v2");
+    assertThat(pillar2.getName()).isEqualTo("Soft Skills ");
+    assertThat(pillar2.getDescription()).isEqualTo(" Communication and teamwork");
+    assertThat(pillar2.getCategoryMap()).hasSize(1);
+
+    // Verify configuration
+    AssessmentConfiguration capturedConfig = configurationCaptor.getValue();
+    assertThat(capturedConfig.getAllowQuestionReview()).isFalse();
+    assertThat(capturedConfig.getRequireAllQuestions()).isTrue();
+    assertThat(capturedConfig.getAutoSave()).isFalse();
+    assertThat(capturedConfig.getNavigationMode()).isEqualTo(QuestionNavigationType.SEQUENTIAL);
+
+    // Verify the response
+    assertThat(response.getStatusCode()).isEqualTo(201);
+    assertThat(response.getBody()).contains("new-v2-matrix-id");
   }
 }

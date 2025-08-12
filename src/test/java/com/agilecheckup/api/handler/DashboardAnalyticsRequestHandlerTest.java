@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -636,7 +636,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(85.5)
                 .employeeCount(10)
                 .completionPercentage(90.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson("{\"pillars\": {}, \"wordCloud\": {}}")
                 .build();
     }
@@ -686,7 +686,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(76.25) // Average of 87.5 and 65.0
                 .employeeCount(10)
                 .completionPercentage(90.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(analyticsJson)
                 .build();
     }
@@ -724,7 +724,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(75.0)
                 .employeeCount(5)
                 .completionPercentage(100.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(analyticsJson)
                 .build();
     }
@@ -774,7 +774,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(76.25)
                 .employeeCount(10)
                 .completionPercentage(90.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(analyticsJson)
                 .build();
     }
@@ -797,7 +797,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(0.0)
                 .employeeCount(5)
                 .completionPercentage(0.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(analyticsJson)
                 .build();
     }
@@ -820,7 +820,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(50.0)
                 .employeeCount(3)
                 .completionPercentage(100.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(malformedJson)
                 .build();
     }
@@ -859,7 +859,7 @@ class DashboardAnalyticsRequestHandlerTest {
                 .generalAverage(80.0)
                 .employeeCount(8)
                 .completionPercentage(75.0)
-                .lastUpdated(LocalDateTime.now())
+                .lastUpdated(Instant.now())
                 .analyticsDataJson(analyticsJson)
                 .build();
     }

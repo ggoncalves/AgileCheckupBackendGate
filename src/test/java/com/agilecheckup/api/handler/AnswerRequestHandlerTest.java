@@ -18,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amazonaws.services.dynamodbv2.datamodeling.PaginatedScanList;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -70,32 +69,23 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers")
                 .withHttpMethod("GET");
 
-        Answer answer1 = Answer.builder()
-                .id("answer-1")
-                .questionId("q-1")
-                .employeeAssessmentId("ea-1")
-                .value("Yes")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
-                .build();
+        Answer answer1 = new Answer();
+        answer1.setId("answer-1");
+        answer1.setQuestionId("q-1");
+        answer1.setEmployeeAssessmentId("ea-1");
+        answer1.setValue("Yes");
+        answer1.setAnsweredAt(LocalDateTime.now());
+        answer1.setTenantId("tenant-123");
 
-        Answer answer2 = Answer.builder()
-                .id("answer-2")
-                .questionId("q-2")
-                .employeeAssessmentId("ea-1")
-                .value("8")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.ONE_TO_TEN)
-                .tenantId("tenant-123")
-                .build();
+        Answer answer2 = new Answer();
+        answer2.setId("answer-2");
+        answer2.setQuestionId("q-2");
+        answer2.setEmployeeAssessmentId("ea-1");
+        answer2.setValue("8");
+        answer2.setAnsweredAt(LocalDateTime.now());
+        answer2.setTenantId("tenant-123");
 
-        PaginatedScanList<Answer> answers = mock(PaginatedScanList.class);
-        when(answers.iterator()).thenReturn(Arrays.asList(answer1, answer2).iterator());
+        List<Answer> answers = Arrays.asList(answer1, answer2);
         when(answerService.findAll()).thenReturn(answers);
 
         // When
@@ -116,17 +106,13 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers/" + answerId)
                 .withHttpMethod("GET");
 
-        Answer answer = Answer.builder()
-                .id(answerId)
-                .questionId("q-1")
-                .employeeAssessmentId("ea-1")
-                .value("Yes")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
-                .build();
+        Answer answer = new Answer();
+        answer.setId(answerId);
+        answer.setQuestionId("q-1");
+        answer.setEmployeeAssessmentId("ea-1");
+        answer.setValue("Yes");
+        answer.setAnsweredAt(LocalDateTime.now());
+        answer.setTenantId("tenant-123");
 
         when(answerService.findById(answerId)).thenReturn(Optional.of(answer));
 
@@ -152,29 +138,21 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("GET")
                 .withQueryStringParameters(queryParams);
 
-        Answer answer1 = Answer.builder()
-                .id("answer-1")
-                .questionId("q-1")
-                .employeeAssessmentId(employeeAssessmentId)
-                .value("Yes")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId(tenantId)
-                .build();
+        Answer answer1 = new Answer();
+        answer1.setId("answer-1");
+        answer1.setQuestionId("q-1");
+        answer1.setEmployeeAssessmentId(employeeAssessmentId);
+        answer1.setValue("Yes");
+        answer1.setAnsweredAt(LocalDateTime.now());
+        answer1.setTenantId(tenantId);
 
-        Answer answer2 = Answer.builder()
-                .id("answer-2")
-                .questionId("q-2")
-                .employeeAssessmentId(employeeAssessmentId)
-                .value("8")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.ONE_TO_TEN)
-                .tenantId(tenantId)
-                .build();
+        Answer answer2 = new Answer();
+        answer2.setId("answer-2");
+        answer2.setQuestionId("q-2");
+        answer2.setEmployeeAssessmentId(employeeAssessmentId);
+        answer2.setValue("8");
+        answer2.setAnsweredAt(LocalDateTime.now());
+        answer2.setTenantId(tenantId);
 
         List<Answer> answers = Arrays.asList(answer1, answer2);
         when(answerService.findByEmployeeAssessmentId(employeeAssessmentId, tenantId)).thenReturn(answers);
@@ -222,17 +200,13 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("POST")
                 .withBody(requestBody);
 
-        Answer createdAnswer = Answer.builder()
-                .id("new-answer-id")
-                .questionId("q-123")
-                .employeeAssessmentId("ea-123")
-                .value("Yes")
-                .answeredAt(LocalDateTime.of(2024, 1, 1, 10, 0))
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
-                .build();
+        Answer createdAnswer = new Answer();
+        createdAnswer.setId("new-answer-id");
+        createdAnswer.setQuestionId("q-123");
+        createdAnswer.setEmployeeAssessmentId("ea-123");
+        createdAnswer.setValue("Yes");
+        createdAnswer.setAnsweredAt(LocalDateTime.of(2024, 1, 1, 10, 0));
+        createdAnswer.setTenantId("tenant-123");
 
         when(answerService.create(
                 eq("ea-123"),
@@ -274,17 +248,13 @@ class AnswerRequestHandlerTest {
                 .withHttpMethod("PUT")
                 .withBody(requestBody);
 
-        Answer updatedAnswer = Answer.builder()
-                .id(answerId)
-                .questionId("q-123")
-                .employeeAssessmentId("ea-123")
-                .value("No")
-                .answeredAt(LocalDateTime.of(2024, 1, 1, 11, 0))
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
-                .build();
+        Answer updatedAnswer = new Answer();
+        updatedAnswer.setId(answerId);
+        updatedAnswer.setQuestionId("q-123");
+        updatedAnswer.setEmployeeAssessmentId("ea-123");
+        updatedAnswer.setValue("No");
+        updatedAnswer.setAnsweredAt(LocalDateTime.of(2024, 1, 1, 11, 0));
+        updatedAnswer.setTenantId("tenant-123");
 
         when(answerService.update(
                 eq(answerId),
@@ -315,26 +285,13 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers/" + answerId)
                 .withHttpMethod("DELETE");
 
-        Answer answer = Answer.builder()
-                .id(answerId)
-                .questionId("q-1")
-                .employeeAssessmentId("ea-1")
-                .value("Yes")
-                .answeredAt(LocalDateTime.now())
-                .pillarId("pillar-1")
-                .categoryId("category-1")
-                .questionType(com.agilecheckup.persistency.entity.QuestionType.YES_NO)
-                .tenantId("tenant-123")
-                .build();
-
-        when(answerService.findById(answerId)).thenReturn(Optional.of(answer));
+        when(answerService.deleteById(answerId)).thenReturn(true);
 
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(answerService).findById(answerId);
-        verify(answerService).delete(answer);
+        verify(answerService).deleteById(answerId);
         assertThat(response.getStatusCode()).isEqualTo(204);
         assertThat(response.getBody()).isEmpty();
     }
@@ -365,14 +322,11 @@ class AnswerRequestHandlerTest {
                 .withPath("/answers/" + answerId)
                 .withHttpMethod("DELETE");
 
-        when(answerService.findById(answerId)).thenReturn(Optional.empty());
-
         // When
         APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
         // Then
-        verify(answerService).findById(answerId);
-        verify(answerService, never()).delete(any());
+        verify(answerService).deleteById(answerId);
         assertThat(response.getStatusCode()).isEqualTo(404);
         assertThat(response.getBody()).contains("Answer not found");
     }

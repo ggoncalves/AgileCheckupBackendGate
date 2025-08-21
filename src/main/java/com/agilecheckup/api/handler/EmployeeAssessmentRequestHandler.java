@@ -187,11 +187,9 @@ public class EmployeeAssessmentRequestHandler implements RequestHandlerStrategy 
     }
   }
 
+  @SuppressWarnings("unused")
   private APIGatewayProxyResponseEvent handleUpdateScore(String id, String requestBody) throws Exception {
-    Map<String, Object> requestMap = objectMapper.readValue(requestBody, Map.class);
-    String tenantId = (String) requestMap.get("tenantId");
-
-    EmployeeAssessment assessment = employeeAssessmentService.updateEmployeeAssessmentScore(id, tenantId);
+    EmployeeAssessment assessment = employeeAssessmentService.updateEmployeeAssessmentScore(id);
 
     if (assessment != null) {
       return ResponseBuilder.buildResponse(200, objectMapper.writeValueAsString(assessment));

@@ -1,7 +1,10 @@
 package com.agilecheckup.api.handler;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
@@ -13,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.agilecheckup.dagger.component.ServiceComponent;
 import com.agilecheckup.security.JwtTokenProvider;
+import com.agilecheckup.service.AssessmentMatrixService;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
@@ -26,6 +30,9 @@ class InvitationRequestHandlerTest {
   private ServiceComponent serviceComponent;
 
   @Mock
+  private AssessmentMatrixService assessmentMatrixService;
+
+  @Mock
   private Context context;
 
   @Mock
@@ -33,10 +40,16 @@ class InvitationRequestHandlerTest {
 
   private InvitationRequestHandler handler;
   private ObjectMapper objectMapper;
+  private JwtTokenProvider jwtTokenProvider;
 
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
+    jwtTokenProvider = new JwtTokenProvider();
+    
+    // Setup the service component to return the mocked service
+    when(serviceComponent.buildAssessmentMatrixService()).thenReturn(assessmentMatrixService);
+    
     handler = new InvitationRequestHandler(serviceComponent, objectMapper);
     lenient().when(context.getLogger()).thenReturn(lambdaLogger);
   }
@@ -47,6 +60,11 @@ class InvitationRequestHandlerTest {
     String assessmentMatrixId = "matrix-123";
     String tenantId = "tenant-456";
     String requestBody = "{\"tenantId\": \"" + tenantId + "\"}";
+    
+    // Generate a test token to return from the mocked service
+    String expectedToken = jwtTokenProvider.generateInvitationToken(tenantId, assessmentMatrixId);
+    when(assessmentMatrixService.generateInvitationToken(anyString(), anyString(), anyBoolean()))
+        .thenReturn(expectedToken);
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/assessmentmatrices/" + assessmentMatrixId + "/generate-invitation-token").withHttpMethod("POST").withBody(requestBody);
 
@@ -60,6 +78,7 @@ class InvitationRequestHandlerTest {
     Map<String, String> responseBody = objectMapper.readValue(response.getBody(), Map.class);
     assertThat(responseBody).containsKey("token");
     assertThat(responseBody.get("token")).isNotBlank();
+    assertThat(responseBody.get("token")).isEqualTo(expectedToken);
   }
 
   @Test

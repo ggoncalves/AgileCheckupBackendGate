@@ -176,13 +176,13 @@ class EmployeeAssessmentRequestHandlerTest {
     EmployeeAssessment assessmentWithScore = EmployeeAssessment.builder().id(assessmentId).assessmentMatrixId("am-123").teamId("team-123").employee(NaturalPerson.builder().email("john.doe@example.com").name("John Doe").gender(Gender.MALE).genderPronoun(GenderPronoun.HE).build()).employeeAssessmentScore(score).build();
     assessmentWithScore.setTenantId("test-tenant-123");
 
-    doReturn(assessmentWithScore).when(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId, "tenant-123");
+    doReturn(assessmentWithScore).when(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
 
     // Then
-    verify(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId, "tenant-123");
+    verify(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId);
     assertThat(response.getStatusCode()).isEqualTo(200);
     assertThat(response.getBody()).contains("85.5");
   }
@@ -195,7 +195,7 @@ class EmployeeAssessmentRequestHandlerTest {
 
     APIGatewayProxyRequestEvent request = new APIGatewayProxyRequestEvent().withPath("/employeeassessments/" + assessmentId + "/score").withHttpMethod("POST").withBody(requestBody);
 
-    doReturn(null).when(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId, "tenant-123");
+    doReturn(null).when(employeeAssessmentService).updateEmployeeAssessmentScore(assessmentId);
 
     // When
     APIGatewayProxyResponseEvent response = handler.handleRequest(request, context);
